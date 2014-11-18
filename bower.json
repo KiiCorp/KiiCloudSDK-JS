@@ -10,7 +10,7 @@
     "kii",
     "sdk"
   ],
-  "license": "MIT",
+  "license": "http://en.kii.com/terms/",
   "homepage": "http://www.kii.com",
   "ignore": [
     "**/.*",
