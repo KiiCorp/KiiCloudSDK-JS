@@ -5,8 +5,8 @@
   "author": "Kii Corp",
   "licenses": [
     {
-      "type": "MIT",
-      "url": "http://opensource.org/licenses/MIT"
+      "type": "KII",
+      "url": "http://en.kii.com/terms"
     }
   ],
   "repository": "KiiCorp/KiiCloudSDK-JS",
