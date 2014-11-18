@@ -1,0 +1,22 @@
+{
+  "name": "kii-storage",
+  "version": "2.1.23",
+  "authors": [
+    "kiicorp"
+  ],
+  "description": "This is the Kii storage SDK",
+  "main": "KiiSDK.js",
+  "keywords": [
+    "kii",
+    "sdk"
+  ],
+  "license": "MIT",
+  "homepage": "http://www.kii.com",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
