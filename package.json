@@ -1,7 +1,7 @@
 {
-  "name": "kii-storage",
+  "name": "kii-cloud-sdk",
   "version": "2.1.23",
-  "description": "This is the Kii storage SDK",
+  "description": "This is the Kii Cloud SDK",
   "author": "Kii Corp",
   "licenses": [
     {
