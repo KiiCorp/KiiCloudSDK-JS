@@ -16,8 +16,7 @@
     "node": ">=0.10.0"
   },
   "dependencies": {
-  "coffee-script": "1.6.3",
-  "phantomjs-prebuilt": "2.1.7" 
+  "coffee-script": "1.6.3"
  },
  "devDependencies": {
   "grunt": "0.4.1",
