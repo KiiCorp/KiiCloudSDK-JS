@@ -1,6 +1,6 @@
 {
   "name": "kii-cloud-sdk",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "This is the Kii Cloud SDK",
   "author": "Kii Corp",
   "licenses": [
@@ -16,17 +16,16 @@
     "node": ">=0.10.0"
   },
   "dependencies": {
-  "coffee-script": "1.6.3"
- },
- "devDependencies": {
-  "grunt": "0.4.1",
-  "grunt-cli": "0.1.8",
-  "grunt-shell-spawn": "0.2.4",
-  "grunt-contrib-uglify": "0.1.2",
-  "grunt-contrib-qunit": "0.2.2"
- },
- "scripts": {
-   "test": "grunt test"
- },
- "preferGlobal": true
+  },
+  "devDependencies": {
+    "coffee-script": "1.8.0",
+    "gulp": "^3.9.1",
+    "gulp-rename": "^1.2.2",
+    "gulp-shell": "^0.5.2",
+    "gulp-sourcemaps": "^1.6.0",
+    "gulp-uglify": "^1.5.3",
+    "gulp-util": "^3.0.7",
+    "gulp-zip": "^3.2.0",
+    "run-sequence": "^1.1.5"
+  }
 }
