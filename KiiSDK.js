@@ -70,7 +70,8 @@ root.KiiSite = {
   JP: "https://api-jp.kii.com/api",
   CN: "https://api-cn2.kii.com/api",
   SG: "https://api-sg.kii.com/api",
-  CN3: "https://api-cn3.kii.com/api"
+  CN3: "https://api-cn3.kii.com/api",
+  EU: "https://api-eu.kii.com/api"
 };
 
 
@@ -107,7 +108,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.5";
+    return "2.4.6";
   };
 
   Kii.getBaseURL = function() {
@@ -18557,25 +18558,6 @@ root.KiiPushInstallationWithToken = (function(_super) {
   return KiiPushInstallationWithToken;
 
 })(root.KiiPushInstallation);
-
-root.ForTest = (function() {
-  function ForTest() {}
-
-  ForTest._getKiiJQXHRWrapper = function(method, url) {
-    return new KiiJQXHRWrapper(method, url);
-  };
-
-  ForTest._getKiiTiXHRWrapper = function(method, url) {
-    return new KiiTiXHRWrapper(method, url);
-  };
-
-  ForTest._getKiiUtilities = function() {
-    return KiiUtilities;
-  };
-
-  return ForTest;
-
-})();
 
 
 return root;
