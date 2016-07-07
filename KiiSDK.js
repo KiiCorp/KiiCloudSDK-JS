@@ -8684,7 +8684,12 @@ root.KiiUser = (function() {
   @param {String} userIdentifier should be valid email address,
       global phone number or user identifier obtained by {@link #getID}.
   @param {String} notificationMethod specify the destination of message include link
-      of resetting password. must be "EMAIL" or "SMS".
+      of resetting password. must one of "EMAIL", "SMS" or "SMS_PIN".
+      - "EMAIL": Send email include link URL to reset password or password.
+      (Contents are depends on 'Password Reset Flow' setting in app's
+      Security settings.)
+      - "SMS" : Send SMS include link URL to reset password.
+      - "SMS_PIN" : Send SMS include PIN Code for reset password.
       different type of identifier and destination can be used
       as long as user have verified email, phone.
       (ex. User registers both email and phone. Identifier is email and
@@ -8758,9 +8763,9 @@ root.KiiUser = (function() {
       }
       return;
     }
-    if (notificationMethod !== 'EMAIL' && notificationMethod !== 'SMS') {
+    if (notificationMethod !== 'EMAIL' && notificationMethod !== 'SMS' && notificationMethod !== 'SMS_PIN') {
       if (callbacks != null) {
-        callbacks.failure('notificationMethod should be \'EMAIL\' or \'SMS\'');
+        callbacks.failure('notificationMethod should be \'EMAIL\' or \'SMS\' or \'SMS_PIN\'');
       }
       return;
     }
@@ -8775,6 +8780,10 @@ root.KiiUser = (function() {
     body = {
       notificationMethod: notificationMethod
     };
+    if (notificationMethod === 'SMS_PIN') {
+      body.notificationMethod = "SMS";
+      body.smsResetMethod = "PIN";
+    }
     requestUri = "" + (root.Kii.getBaseURL()) + "/apps/" + (root.Kii.getAppID()) + "/users/" + qualifiedID + "/password/request-reset";
     wrapper = KiiXHRWrapperFactory.createXHRWrapper("POST", requestUri);
     xhr = wrapper.xhr;
@@ -8782,6 +8791,134 @@ root.KiiUser = (function() {
     xhr.setRequestHeader("x-kii-appkey", root.Kii.getAppKey());
     xhr.setRequestHeader("x-kii-sdk", root.KiiSDKClientInfo.getSDKClientInfo());
     xhr.setRequestHeader("Content-Type", "application/vnd.kii.ResetPasswordRequest+json");
+    reqCallbacks = {
+      success: function() {
+        return callbacks != null ? callbacks.success() : void 0;
+      },
+      failure: function() {
+        var errString, json;
+        errString = "failed to reset password. statusCode: " + xhr.status;
+        try {
+          json = JSON.parse(xhr.responseText);
+          if (json.errorCode != null) {
+            errString += " error code: " + json.errorCode;
+          }
+          if (json.message != null) {
+            return errString += " error message: " + json.message;
+          }
+        } catch (_error) {
+
+        } finally {
+          if (callbacks != null) {
+            callbacks.failure(errString);
+          }
+        }
+      }
+    };
+    return wrapper.sendData(JSON.stringify(body), reqCallbacks);
+  };
+
+
+  /** Reset password with the PIN code in receipt SMS
+  After {@link KiiUser.resetPasswordWithNotificationMethod} is called with
+  "SMS_PIN", SMS includes the PIN code will be sent to the user's phone.
+  User can request the new password for login with the PIN code.
+  Need to call method for authentication after the new password is determined.
+  @param {String} userIdentifier should be valid email address,
+      global phone number or user identifier obtained by {@link #getID}.
+  @param {String} pinCode Received PIN code.
+  @param {String} [newPassword] New password for login.
+  If the 'Password Reset Flow' in app's security setting is set to
+  'Generate password', it would be ignored and null can be passed.
+  In this case, new password is generated on Kii Cloud and sent to user's
+  phone. Otherwise valid password is required.
+  @param {Object} [callbacks] object includes callback functions.
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(). No parameter used.</li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+  @example
+  // Example using callback
+  KiiUser.completeResetPassword("john.doe@kii.com", "new-password", "223789",
+  {
+      success: function() {
+          // Succeeded.
+      },
+      failure: function(error) {
+          // Handle error here.
+      }
+  });
+  
+  // Example using Promise
+  KiiUser.completeResetPassword(
+      "john.doe@kii.com", "new-password", "223789").then(function() {
+          // Succeeded.
+      }).catch(function(error) {
+          // Handle error here.
+      });
+   */
+
+  KiiUser.completeResetPassword = function(userIdentifier, pinCode, newPassword, callbacks) {
+    return new Promise(function(resolve, reject) {
+      var completeResetPasswordCallbacks;
+      completeResetPasswordCallbacks = {
+        success: function() {
+          if (callbacks != null) {
+            callbacks.success();
+          }
+          return resolve();
+        },
+        failure: function() {
+          if (callbacks != null) {
+            callbacks.failure(arguments[0]);
+          }
+          return reject(KiiUtilities._Error(arguments[0]));
+        }
+      };
+      return KiiUser._completeResetPasswordUsingCallbacks(userIdentifier, pinCode, newPassword, completeResetPasswordCallbacks);
+    });
+  };
+
+  KiiUser._completeResetPasswordUsingCallbacks = function(userIdentifier, pinCode, newPassword, callbacks) {
+    var body, qualifiedID, reqCallbacks, requestUri, wrapper, xhr;
+    if (!KiiUtilities._isNonEmptyString(userIdentifier)) {
+      if (callbacks != null) {
+        callbacks.failure('given userIdentifier is null or empty');
+      }
+      return;
+    }
+    if (!KiiUtilities._isNonEmptyString(pinCode)) {
+      if (callbacks != null) {
+        callbacks.failure('given pinCode is null or empty');
+      }
+      return;
+    }
+    if (KiiUtilities._validateEmail(userIdentifier)) {
+      qualifiedID = "EMAIL:" + userIdentifier;
+    } else if (KiiUtilities._isGlobalPhoneNumber(userIdentifier)) {
+      qualifiedID = "PHONE:" + userIdentifier;
+    } else {
+      qualifiedID = userIdentifier;
+    }
+    qualifiedID = encodeURIComponent(qualifiedID);
+    body = {
+      pinCode: pinCode
+    };
+    if (KiiUtilities._isNonEmptyString(newPassword)) {
+      body["newPassword"] = newPassword;
+    }
+    requestUri = "" + (root.Kii.getBaseURL()) + "/apps/" + (root.Kii.getAppID()) + "/users/" + qualifiedID + "/password/complete-reset";
+    wrapper = KiiXHRWrapperFactory.createXHRWrapper("POST", requestUri);
+    xhr = wrapper.xhr;
+    xhr.setRequestHeader("x-kii-appid", root.Kii.getAppID());
+    xhr.setRequestHeader("x-kii-appkey", root.Kii.getAppKey());
+    xhr.setRequestHeader("x-kii-sdk", root.KiiSDKClientInfo.getSDKClientInfo());
+    xhr.setRequestHeader("Content-Type", "application/vnd.kii.CompletePasswordResetRequest+json");
     reqCallbacks = {
       success: function() {
         return callbacks != null ? callbacks.success() : void 0;
