@@ -108,7 +108,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.7";
+    return "2.4.8";
   };
 
   Kii.getBaseURL = function() {
@@ -18697,6 +18697,246 @@ root.KiiPushInstallationWithToken = (function(_super) {
 })(root.KiiPushInstallation);
 
 
+/**
+    @class A Parser for error string or error object returned by SDK.
+    @exports root.KiiErrorParser as KiiErrorParser
+ */
+
+root.KiiErrorParser = (function() {
+  var REG_NETWORK_ERROR, REG_SERVER_ERROR_KII_REQUEST, REG_SERVER_ERROR_KII_SERVER_CODE, REG_SERVER_ERROR_KII_SERVER_CODE_VERSION_NOT_FOUND, REG_SERVER_ERROR_KII_USER_OR_OBJECT, REG_SERVER_ERROR_KII_XHR_WRAPPER, SERVER_ERROR_CODES;
+
+  function KiiErrorParser() {}
+
+  SERVER_ERROR_CODES = {
+    APP_NOT_FOUND: 404,
+    APP_DISABLED: 403,
+    UNAUTHORIZED: 401,
+    USER_NOT_FOUND: 404,
+    THING_NOT_FOUND: 404,
+    THING_DISABLED: 401,
+    THING_ALREADY_EXISTS: 409,
+    THING_TYPE_NOT_FOUND: 404,
+    FIRMWARE_VERSION_NOT_FOUND: 404,
+    WRONG_TOKEN: 403,
+    WRONG_REFRESH_TOKEN: 403,
+    INVALID_BUCKET: 400,
+    OPERATION_NOT_ALLOWED: 409,
+    OPERATION_NOT_SUPPORTED: 403,
+    AUTHENTICATION_FAILED: 401,
+    USER_DISABLED: 401,
+    INVALID_DATA_TYPE: 400,
+    INVALID_INPUT_DATA: 400,
+    INVALID_JSON: 400,
+    INVALID_JSON_SCHEMA: 400,
+    MISSING_DATA: 400,
+    RESOURCE_TEMPORARILY_UNAVAILABLE: 503,
+    WRONG_PASSWORD: 401,
+    OAUTH2_ERROR: 400,
+    THING_END_NODE_DOES_NOT_BELONG_TO_GATEWAY: 404,
+    THING_END_NODE_ALREADY_BELONGS_TO_GATEWAY: 409,
+    UNDEFINED_ERROR: 500,
+    OPERATION_NOT_IMPLEMENTED: 501,
+    LOCK_FAILED: 503,
+    QUERY_NOT_SUPPORTED: 400,
+    QUERY_TIMEOUT: 503,
+    TEMPORARY_UNAVAILABLE_ERROR: 503,
+    APP_ALREADY_EXISTS: 409,
+    BUCKET_ALREADY_EXISTS: 409,
+    BUCKET_NOT_FOUND: 404,
+    FILTER_NOT_FOUND: 404,
+    INVALID_ACCOUNT_STATUS: 400,
+    INVALID_OBJECT_ID: 400,
+    INVALID_VERIFICATION_CODE: 403,
+    OBJECT_NOT_FOUND: 404,
+    OBJECT_VERSION_IS_STALE: 409,
+    OBJECT_ALREADY_EXISTS: 409,
+    OBJECT_CONFLICT: 409,
+    PUBLICATION_NOT_FOUND: 404,
+    PUBLICATION_EXPIRED: 410,
+    USER_ALREADY_EXISTS: 409,
+    USER_ADDRESS_NOT_FOUND: 404,
+    VERIFICATION_CODE_NOT_FOUND: 404,
+    ACCOUNT_TYPE_NOT_SUPPORTED: 400,
+    OBJECT_BODY_NOT_FOUND: 404,
+    OBJECT_BODY_RANGE_NOT_SATISFIABLE: 416,
+    OBJECT_BODY_INTEGRITY_NOT_ASSURED: 412,
+    OBJECT_BODY_UPLOAD_NOT_FOUND: 404,
+    OBJECT_BODY_UPLOAD_ALREADY_EXISTS: 409,
+    BUCKET_TYPE_NOT_SUPPORTED: 400,
+    GROUP_NOT_FOUND: 404,
+    GROUP_ALREADY_EXISTS: 409,
+    INSTALLATION_NOT_FOUND: 404,
+    INSTALLATION_ALREADY_EXISTS: 409,
+    ACL_NOT_FOUND: 404,
+    ACL_ALREADY_EXISTS: 409,
+    VERSIONED_UPDATES_NOT_SUPPORTED: 400,
+    NO_ACCOUNT_PROVIDED: 400,
+    FACEBOOK_USER_ALREADY_LINKED: 409,
+    QQ_USER_ALREADY_LINKED: 409,
+    GOOGLE_USER_ALREADY_LINKED: 409,
+    USER_ALREADY_LINKED: 409,
+    USER_NOT_LINKED: 409,
+    UNIQUE_CONSTRAINT_VIOLATED: 409,
+    GCMKEY_ALREADY_EXISTS: 409,
+    GCMKEY_NOT_FOUND: 404,
+    APNSKEY_NOT_FOUND: 404,
+    JSON_WEB_KEY_NOT_FOUND: 404,
+    JPUSHKEY_NOT_FOUND: 404,
+    PUSH_SUBSCRIPTION_ALREADY_EXISTS: 409,
+    PUSH_SUBSCRIPTION_NOT_FOUND: 404,
+    TOPIC_ALREADY_EXISTS: 409,
+    TOPIC_NOT_FOUND: 404,
+    USER_LOCALE_NOT_FOUND: 404,
+    TEMPLATE_NOT_FOUND: 404,
+    USER_COUNTRY_NOT_FOUND: 404,
+    USER_DISPLAY_NAME_NOT_FOUND: 404,
+    SERVER_CODE_VERSION_NOT_FOUND: 404,
+    SERVER_CODE_HOOK_VERSION_NOT_FOUND: 404,
+    SCHEDULE_EXECUTION_NOT_FOUND: 404,
+    ENDPOINT_INVOCATION_ERROR: 400,
+    SERVER_CODE_VERIFICATION_ERROR: 400,
+    PAYLOAD_ID_NOT_FOUND: 404,
+    REPLACEMENT_SQL_QUERY_NOT_FOUND: 404,
+    APP_CONFIG_PARAMETER_NOT_FOUND: 404,
+    TRANSACTION_ID_NOT_FOUND: 404,
+    TRANSACTION_ID_ALREADY_EXISTS: 409,
+    CLIENT_CREDENTIALS_NOT_FOUND: 404,
+    ACCESS_CODE_NOT_FOUND: 404,
+    THING_OWNERSHIP_NOT_FOUND: 404,
+    THING_OWNERSHIP_ALREADY_EXISTS: 409,
+    INVALID_THING_OWNERSHIP_CODE: 409,
+    MQTT_ENDPOINT_NOT_FOUND: 404,
+    TASK_NOT_FOUND: 404,
+    TASK_NOT_RECURRENT: 400,
+    INVALID_STATUS: 409,
+    PHONE_NUMBER_VERIFICATION_CODE_EXPIRED: 410,
+    PIN_CODE_EXPIRED: 410,
+    ADDRESS_VERIFICATION_CODE_NOT_FOUND: 404,
+    MQTT_ENDPOINT_NOT_READY: 503,
+    INDEX_FAILED: 500
+  };
+
+  REG_SERVER_ERROR_KII_REQUEST = new RegExp("(^[A-Z_]+): (.*)");
+
+  REG_SERVER_ERROR_KII_XHR_WRAPPER = new RegExp(" statusCode: (\\d{3}) error code: ([A-Z_]+) message: (.*)$");
+
+  REG_SERVER_ERROR_KII_USER_OR_OBJECT = new RegExp(" statusCode: (\\d{3}) error code: ([A-Z_]+) error message: (.*)$");
+
+  REG_SERVER_ERROR_KII_SERVER_CODE = new RegExp(" statusCode: (\\d{3}) executedSteps: \\d+ error code: ([A-Z_]+) message: (.*) detailMessage: (.*)$");
+
+  REG_SERVER_ERROR_KII_SERVER_CODE_VERSION_NOT_FOUND = new RegExp(" statusCode: (\\d{3}) executedSteps: null error code: ([A-Z_]+) message: (.*)$");
+
+  REG_NETWORK_ERROR = new RegExp("statusCode: (\\d{1,3})$");
+
+
+  /** Parse an error string or error object returned by SDK.
+  @param {Object} error An error string or error object
+  @return {Object} return parsed error object.
+  @example
+  var err = KiiErrorParser.parse(errorString);
+  var httpStatus = err.status;
+  if (httpStatus == 0) {
+      // NetworkError
+  } else if (httpStatus == -1) {
+      // Error is not related the http error. eg. argument error, illegal state error, etc.
+  } else if (httpStatus == -2) {
+      // Unknown error is detected.
+      // Please confirm that you are using the latest version of SDK.
+  } else if (httpStatus >= 400 && httpStatus < 600) {
+      // Http error
+  }
+  var errorCode = err.code;
+  var errorMessage = err.message;
+   */
+
+  KiiErrorParser.parse = function(error) {
+    var arr, code, errorString, message, regex, status, _i, _len, _ref;
+    if ((typeof error).toLowerCase() === "string") {
+      errorString = error;
+    } else {
+      errorString = error.message;
+    }
+    if (!errorString) {
+      return null;
+    }
+    if (errorString.indexOf('0 : http') === 0) {
+      return {
+        status: 0,
+        code: null,
+        message: "Network Error"
+      };
+    } else if (errorString.indexOf('429 : http') === 0) {
+      return {
+        status: 429,
+        code: "TOO_MANY_REQUESTS",
+        message: "Number of requests exceeds the limit."
+      };
+    } else if (errorString.indexOf('fail to execute server code. statusCode: 0') === 0) {
+      return {
+        status: 0,
+        code: null,
+        message: "Network Error"
+      };
+    } else {
+      arr = REG_NETWORK_ERROR.exec(errorString);
+      if (arr) {
+        status = Number(arr[1]);
+        if (status === 429) {
+          return {
+            status: 429,
+            code: "TOO_MANY_REQUESTS",
+            message: "Number of requests exceeds the limit."
+          };
+        } else {
+          return {
+            status: 0,
+            code: null,
+            message: "Network Error"
+          };
+        }
+      }
+      arr = REG_SERVER_ERROR_KII_REQUEST.exec(errorString);
+      if (arr) {
+        code = arr[1];
+        message = arr[2];
+        status = SERVER_ERROR_CODES[code];
+        if (!status) {
+          status = -2;
+        }
+        return {
+          status: status,
+          code: code,
+          message: message
+        };
+      }
+      _ref = [REG_SERVER_ERROR_KII_XHR_WRAPPER, REG_SERVER_ERROR_KII_USER_OR_OBJECT, REG_SERVER_ERROR_KII_SERVER_CODE, REG_SERVER_ERROR_KII_SERVER_CODE_VERSION_NOT_FOUND];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        regex = _ref[_i];
+        arr = regex.exec(errorString);
+        if (arr) {
+          status = Number(arr[1]);
+          code = arr[2];
+          message = arr[3];
+          return {
+            status: status,
+            code: code,
+            message: message
+          };
+        }
+      }
+    }
+    return {
+      status: -1,
+      code: null,
+      message: errorString
+    };
+  };
+
+  return KiiErrorParser;
+
+})();
+
+
 return root;
 });  // generated by build.sh for running on Node.js
 
@@ -18705,7 +18945,7 @@ return root;
 var b = ((typeof module) !== "undefined") && (module !== null);
 if (b && module.exports) {
   module.exports = {
-    exportedClasses: ['ForTest', 'Kii', 'KiiACL', 'KiiACLEntry', 'KiiACLWithToken', 'KiiAnalytics', 'KiiAnonymousUser', 'KiiAnyAuthenticatedUser', 'KiiAppAdminContext', 'KiiBucket', 'KiiBucketWithToken', 'KiiClause', 'KiiEncryptedBucket', 'KiiEncryptedBucketWithToken', 'KiiGeoPoint', 'KiiGroup', 'KiiGroupWithToken', 'KiiObject', 'KiiObjectWithToken', 'KiiPushInstallation', 'KiiPushInstallationWithToken', 'KiiPushSubscription', 'KiiPushSubscriptionWithToken', 'KiiQuery', 'KiiSCNFacebook', 'KiiSCNGoogle', 'KiiSCNQQ', 'KiiSCNRenRen', 'KiiSCNTwitter', 'KiiSDKClientInfo', 'KiiServerCodeEntry', 'KiiServerCodeExecResult', 'KiiSocialConnect', 'KiiSocialConnectNetwork', 'KiiThing', 'KiiThingContext', 'KiiThingWithToken', 'KiiTopic', 'KiiPushMessageBuilder', 'KiiTopicWithToken', 'KiiUser', 'KiiUserBuilder', 'KiiUserWithToken', 'KiiSocialNetworkName', 'KiiSite', '_KiiHttpRequestType', 'KiiACLAction', 'KiiAnalyticsSite', 'InvalidDisplayNameException', 'InvalidPasswordException', 'InvalidUsernameException', 'InvalidUserIdentifierException', 'InvalidEmailException', 'InvalidPhoneNumberException', 'InvalidLocalPhoneNumberException', 'InvalidCountryException', 'InvalidURIException', 'InvalidACLAction', 'InvalidACLSubject', 'InvalidACLGrant', 'InvalidLimitException', 'InvalidArgumentException', 'IllegalStateException', 'ArithmeticException', 'UnsupportedOperationException'],
+    exportedClasses: ['ForTest', 'Kii', 'KiiACL', 'KiiACLEntry', 'KiiACLWithToken', 'KiiAnalytics', 'KiiAnonymousUser', 'KiiAnyAuthenticatedUser', 'KiiAppAdminContext', 'KiiBucket', 'KiiBucketWithToken', 'KiiClause', 'KiiEncryptedBucket', 'KiiEncryptedBucketWithToken', 'KiiErrorParser', 'KiiGeoPoint', 'KiiGroup', 'KiiGroupWithToken', 'KiiObject', 'KiiObjectWithToken', 'KiiPushInstallation', 'KiiPushInstallationWithToken', 'KiiPushSubscription', 'KiiPushSubscriptionWithToken', 'KiiQuery', 'KiiSCNFacebook', 'KiiSCNGoogle', 'KiiSCNQQ', 'KiiSCNRenRen', 'KiiSCNTwitter', 'KiiSDKClientInfo', 'KiiServerCodeEntry', 'KiiServerCodeExecResult', 'KiiSocialConnect', 'KiiSocialConnectNetwork', 'KiiThing', 'KiiThingContext', 'KiiThingWithToken', 'KiiTopic', 'KiiPushMessageBuilder', 'KiiTopicWithToken', 'KiiUser', 'KiiUserBuilder', 'KiiUserWithToken', 'KiiSocialNetworkName', 'KiiSite', '_KiiHttpRequestType', 'KiiACLAction', 'KiiAnalyticsSite', 'InvalidDisplayNameException', 'InvalidPasswordException', 'InvalidUsernameException', 'InvalidUserIdentifierException', 'InvalidEmailException', 'InvalidPhoneNumberException', 'InvalidLocalPhoneNumberException', 'InvalidCountryException', 'InvalidURIException', 'InvalidACLAction', 'InvalidACLSubject', 'InvalidACLGrant', 'InvalidLimitException', 'InvalidArgumentException', 'IllegalStateException', 'ArithmeticException', 'UnsupportedOperationException'],
     create: function() {
       return ctor.call(this);
     }
