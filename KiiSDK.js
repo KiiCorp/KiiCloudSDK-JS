@@ -108,7 +108,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.8";
+    return "2.4.9";
   };
 
   Kii.getBaseURL = function() {
@@ -1721,57 +1721,62 @@ root.KiiBucket = (function() {
   };
 
   KiiBucket.prototype._executeQueryUsingCallbacks = function(query, callbacks) {
-    var data, executeCallbacks, path, request;
-    path = this._generatePath() + "/query";
-    data = {};
-    if (query != null) {
-      data = query._dictValue();
-    } else {
-      data.bucketQuery = {
-        "clause": root.KiiQuery._emptyDictValue()
-      };
-    }
-    request = this._getRequest({
-      path: path,
-      withApp: true
-    });
-    request.setMethod("POST");
-    request.setContentType("application/vnd.kii.QueryRequest+json");
-    request.setData(data);
-    executeCallbacks = {
-      success: (function(_this) {
-        return function(data, statusCode) {
-          var nextQuery, result, resultSet, _i, _len, _ref;
-          if (statusCode < 300 && statusCode >= 200) {
-            resultSet = [];
-            _ref = data.results;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              result = _ref[_i];
-              resultSet.push(_this.objectWithJSON(result));
+    var data, error, executeCallbacks, path, request;
+    try {
+      path = this._generatePath() + "/query";
+      data = {};
+      if (query != null) {
+        data = query._dictValue();
+      } else {
+        data.bucketQuery = {
+          "clause": root.KiiQuery._emptyDictValue()
+        };
+      }
+      request = this._getRequest({
+        path: path,
+        withApp: true
+      });
+      request.setMethod("POST");
+      request.setContentType("application/vnd.kii.QueryRequest+json");
+      request.setData(data);
+      executeCallbacks = {
+        success: (function(_this) {
+          return function(data, statusCode) {
+            var nextQuery, result, resultSet, _i, _len, _ref;
+            if (statusCode < 300 && statusCode >= 200) {
+              resultSet = [];
+              _ref = data.results;
+              for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                result = _ref[_i];
+                resultSet.push(_this.objectWithJSON(result));
+              }
+              if (data.nextPaginationKey != null) {
+                nextQuery = new root.KiiQuery(query);
+                nextQuery.setPaginationKey(data.nextPaginationKey);
+              } else {
+                nextQuery = null;
+              }
+              if (callbacks != null) {
+                return callbacks.success(query, resultSet, nextQuery);
+              }
+            } else if (callbacks != null) {
+              return callbacks.failure(_this, "Unable to parse response");
             }
-            if (data.nextPaginationKey != null) {
-              nextQuery = new root.KiiQuery(query);
-              nextQuery.setPaginationKey(data.nextPaginationKey);
-            } else {
-              nextQuery = null;
-            }
+          };
+        })(this),
+        failure: (function(_this) {
+          return function(error, statusCode) {
             if (callbacks != null) {
-              return callbacks.success(query, resultSet, nextQuery);
+              return callbacks.failure(_this, error);
             }
-          } else if (callbacks != null) {
-            return callbacks.failure(_this, "Unable to parse response");
-          }
-        };
-      })(this),
-      failure: (function(_this) {
-        return function(error, statusCode) {
-          if (callbacks != null) {
-            return callbacks.failure(_this, error);
-          }
-        };
-      })(this)
-    };
-    return request.execute(executeCallbacks, false);
+          };
+        })(this)
+      };
+      return request.execute(executeCallbacks, false);
+    } catch (_error) {
+      error = _error;
+      return callbacks.failure(this, error);
+    }
   };
 
 
@@ -4014,6 +4019,8 @@ root.KiiObject = (function() {
     this.objectACL = __bind(this.objectACL, this);
     this.getGeoPoint = __bind(this.getGeoPoint, this);
     this.setGeoPoint = __bind(this.setGeoPoint, this);
+    this.remove = __bind(this.remove, this);
+    this.getKeys = __bind(this.getKeys, this);
     this.get = __bind(this.get, this);
     this.set = __bind(this.set, this);
     this._getPath = __bind(this._getPath, this);
@@ -4090,6 +4097,45 @@ root.KiiObject = (function() {
 
   KiiObject.prototype.get = function(key) {
     return this._customInfo[key];
+  };
+
+
+  /** Gets the array object that contains all keys of custom field.
+  The array of keys from local cache will be returned.
+  To get the latest array of keys from cloud, calling refresh() is necessary prior calling this method.
+  The returned array object does not include reserved keys such as _created, _modified, etc.
+  @returns {Array} keys An array of all keys of custom field.
+  @example
+  var obj = . . .; // a KiiObject
+  for(var key of obj.keys()) {
+  }
+   */
+
+  KiiObject.prototype.getKeys = function() {
+    var key, keys;
+    keys = [];
+    for (key in this._customInfo) {
+      keys.push(key);
+    }
+    return keys;
+  };
+
+
+  /** Removes a pair of key/value from this object.
+  This pair is also removed from server when saveAllFields() is succeeded. 
+  @param {String} key The key to be removed
+  @example
+  var obj = . . .; // a KiiObject
+  obj.remove("score");
+   */
+
+  KiiObject.prototype.remove = function(key) {
+    var index;
+    delete this._customInfo[key];
+    index = this._alteredFields.indexOf(key);
+    if (index >= 0) {
+      return this._alteredFields.splice(index, 1);
+    }
   };
 
 
@@ -4185,8 +4231,11 @@ root.KiiObject = (function() {
     };
   };
 
-  KiiObject.prototype._updateWithJSON = function(json) {
+  KiiObject.prototype._updateWithJSON = function(json, patch) {
     var key, val, _results;
+    if (!patch) {
+      this._customInfo = {};
+    }
     _results = [];
     for (key in json) {
       val = json[key];
@@ -4319,7 +4368,7 @@ root.KiiObject = (function() {
           if (statusCode < 300 && statusCode >= 200) {
             _this._etag = headers['etag'];
             if (patch) {
-              _this._updateWithJSON(data);
+              _this._updateWithJSON(data, true);
             } else {
               if (data['createdAt'] != null) {
                 _this._created = data['createdAt'];
@@ -4606,7 +4655,7 @@ root.KiiObject = (function() {
         return function(data, statusCode, headers) {
           if (statusCode < 300 && statusCode >= 200) {
             _this._etag = headers['etag'];
-            _this._updateWithJSON(data);
+            _this._updateWithJSON(data, false);
             if (callbacks != null) {
               return callbacks.success(_this);
             }
@@ -6136,6 +6185,10 @@ root.KiiClause = (function() {
       _dict.type = "prefix";
       _dict.field = key;
       _dict.prefix = value;
+    } else if (operator === "hasField") {
+      _dict.type = "hasField";
+      _dict.field = key;
+      _dict.fieldType = value;
     }
     expression._setDictValue(_dict);
     return expression;
@@ -6154,6 +6207,9 @@ root.KiiClause = (function() {
 
 
   /** Create a KiiClause with the OR operator concatenating multiple KiiClause objects
+  <br><br>
+  <b>Note:</b>
+  Query performance will be worse as the number of objects in bucket increases, so we recommend you avoid the OR clause if possible.
   @param {List} A variable-length list of KiiClause objects to concatenate
   @example
   KiiClause clause = KiiClause.or(clause1, clause2, clause3, . . .)
@@ -6161,6 +6217,18 @@ root.KiiClause = (function() {
 
   KiiClause.or = function() {
     return KiiClause.createWithWhere("or", arguments);
+  };
+
+
+  /** Create a KiiClause with the NOT operator concatenating a KiiClause object
+  <br><br>
+  <b>Note:</b>
+  Query performance will be worse as the number of objects in bucket increases, so we recommend you avoid the NOT clause if possible.
+  @param {Object} clause KiiClause object to negate
+   */
+
+  KiiClause.not = function(clause) {
+    return KiiClause.createWithWhere("not", [clause]);
   };
 
 
@@ -6284,7 +6352,7 @@ root.KiiClause = (function() {
           var orderByKey = "_calculated." + putDistanceInto;
           query.sortByAsc(orderByKey);
           // Define the callbacks
-          var bucket = Kii.bucketWithName("MyBucket"); 
+          var bucket = Kii.bucketWithName("MyBucket");
           var queryCallback = {
               success: function(queryPerformed, resultSet, nextQuery) {
                   // check the first object from resultSet.
@@ -6376,6 +6444,19 @@ root.KiiClause = (function() {
     };
     expression._setDictValue(_dict);
     return expression;
+  };
+
+
+  /** Create an expression to returns all entities that have a specified field and type.
+  @param {String} key name of the specified field.
+  @param {String} fieldType The type of the content of the field. The type of the content of the field must be provided, possible values are "STRING", "INTEGER", "DECIMAL" and "BOOLEAN".
+   */
+
+  KiiClause.hasField = function(key, fieldType) {
+    if (fieldType !== "STRING" && fieldType !== "INTEGER" && fieldType !== "DECIMAL" && fieldType !== "BOOLEAN") {
+      throw root.InvalidArgumentException("fieldType is invalid.");
+    }
+    return root.KiiClause.create("hasField", key, fieldType);
   };
 
   return KiiClause;
