@@ -108,7 +108,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.9";
+    return "2.4.10";
   };
 
   Kii.getBaseURL = function() {
@@ -5980,7 +5980,7 @@ root.KiiQuery = (function() {
 
 
   /** Get the limit of the current query
-  @returns {Integer}
+  @returns {Number}
    */
 
   KiiQuery.prototype.getLimit = function() {
@@ -6300,7 +6300,7 @@ root.KiiClause = (function() {
 
   /** Create an expression of the form (key in values)
   @param {String} key The key to compare
-  @param {Object} value the value to compare
+  @param {Array} values to be compared with.
    */
 
   KiiClause["in"] = function(key, values) {
@@ -6310,7 +6310,7 @@ root.KiiClause = (function() {
 
   /** Create an expression of the form (key in values)
   @param {String} key The key to compare
-  @param {Array} values to compare
+  @param {Array} values to be compared with.
    */
 
   KiiClause.inClause = function(key, values) {
@@ -12258,6 +12258,7 @@ root.KiiAppAdminContext = (function() {
     this.registerThing = __bind(this.registerThing, this);
     this.registerGroupWithOwnerAndID = __bind(this.registerGroupWithOwnerAndID, this);
     this._getToken = __bind(this._getToken, this);
+    this.getAccessToken = __bind(this.getAccessToken, this);
     this._getId = __bind(this._getId, this);
     this._objectWithURI = __bind(this._objectWithURI, this);
     this._token = spec.token;
@@ -12442,6 +12443,16 @@ root.KiiAppAdminContext = (function() {
 
   KiiAppAdminContext.prototype._getId = function() {
     return this._id;
+  };
+
+
+  /**
+      Get access token published for app admin.
+      @return {String} access token published for app admin.
+   */
+
+  KiiAppAdminContext.prototype.getAccessToken = function() {
+    return this._getToken();
   };
 
   KiiAppAdminContext.prototype._getToken = function() {
@@ -14728,6 +14739,71 @@ root.KiiThing = (function() {
   };
 
 
+  /** Perform a query to get the owned things.
+  
+  <br><br>The query will be executed against the server, returning a result set.
+  @param KiiThingQuery thingQuery thingQuery.
+  @param Object callbacks An object with callback methods defined
+  @param {Function} callbacks.success The callback method to call on a successful query request
+  @param {Function} callbacks.failure The callback method to call on a failed query request
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(result). result is KiiThingQueryResult instance.</li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.target is the KiiThing instance.</li>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+   */
+
+  KiiThing.executeQuery = function(thingQuery, callbacks) {
+    return new Promise(function(resolve, reject) {
+      var errObj, sendCallbacks, wrapper;
+      if (thingQuery == null) {
+        errObj = KiiUtilities._Error("thingQuery is null");
+        if (callbacks != null) {
+          callbacks.failure(errObj);
+        }
+        reject(errObj);
+        return;
+      }
+      wrapper = KiiXHRWrapperFactory.createXHRWrapper('POST', "" + (root.Kii.getBaseURL()) + "/apps/" + (root.Kii.getAppID()) + "/things/query");
+      wrapper.setKiiHeaders();
+      wrapper.setCurrentUserToken();
+      wrapper.setContentType("application/vnd.kii.ThingQueryRequest+json");
+      sendCallbacks = {
+        success: function() {
+          var queryResult, respJson, result, things, _i, _len, _ref;
+          respJson = JSON.parse(decodeURIComponent(wrapper.xhr.responseText));
+          things = [];
+          _ref = respJson.results;
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            result = _ref[_i];
+            things.push(new root.KiiThing(result));
+          }
+          queryResult = new root.KiiThingQueryResult(thingQuery, things, respJson.nextPaginationKey);
+          if (callbacks != null) {
+            callbacks.success(queryResult);
+          }
+          return resolve(queryResult);
+        },
+        failure: function() {
+          var errString;
+          errString = wrapper.getErrorString("query thing");
+          errObj = KiiUtilities._Error(errString);
+          if (callbacks != null) {
+            callbacks.failure(errObj);
+          }
+          return reject(errObj);
+        }
+      };
+      return wrapper.sendData(JSON.stringify(thingQuery._dictValue()), sendCallbacks);
+    });
+  };
+
+
   /**
   Retrieve the latest thing information from KiiCloud.
   <br>This API is authorized by owner of thing.
@@ -16366,6 +16442,7 @@ root.KiiPushMessageBuilder = (function() {
     this.data = data;
     this.mqttData = __bind(this.mqttData, this);
     this.jpushData = __bind(this.jpushData, this);
+    this.apnsMutableContent = __bind(this.apnsMutableContent, this);
     this.apnsCategory = __bind(this.apnsCategory, this);
     this.apnsContentAvailable = __bind(this.apnsContentAvailable, this);
     this.apnsBadge = __bind(this.apnsBadge, this);
@@ -16612,15 +16689,18 @@ root.KiiPushMessageBuilder = (function() {
 
   /** Set content-available for APNS subscribers.
   If this method is not called, no content-available is applied.
-  @param {Number} contentAvailable If 0 or this method is not invoked,
+  @param {Number} contentAvailable If eqaul or less than 0
+  or this method is not invoked,
   content-available payload is not delivered.
   Otherwise, content-available=1 payload is delivered.
   @return {Object} builder instance.
    */
 
   KiiPushMessageBuilder.prototype.apnsContentAvailable = function(contentAvailable) {
-    if (contentAvailable !== 0) {
+    if (contentAvailable > 0) {
       this.apns.contentAvailable = true;
+    } else {
+      delete this.apns.contentAvailable;
     }
     return this;
   };
@@ -16635,6 +16715,25 @@ root.KiiPushMessageBuilder = (function() {
 
   KiiPushMessageBuilder.prototype.apnsCategory = function(category) {
     this.apns.category = category;
+    return this;
+  };
+
+
+  /** Set mutable-content for APNS subscribers.
+  If this method is not called, no mutable-content is applied.
+  @param {Number} mutableContent If equal or less than 0
+  or this method is not invoked,
+  mutable-content payload is not delivered.
+  Otherwise, mutable-content=1 payload is delivered.
+  @return {Object} builder instance.
+   */
+
+  KiiPushMessageBuilder.prototype.apnsMutableContent = function(mutableContent) {
+    if (mutableContent > 0) {
+      this.apns.mutableContent = true;
+    } else {
+      delete this.apns.mutableContent;
+    }
     return this;
   };
 
@@ -18405,6 +18504,7 @@ root.KiiPushInstallation = (function() {
     this.getMqttEndpoint = __bind(this.getMqttEndpoint, this);
     this._install = __bind(this._install, this);
     this.installMqtt = __bind(this.installMqtt, this);
+    this.installApns = __bind(this.installApns, this);
     this.installGcm = __bind(this.installGcm, this);
     this._user = user;
   }
@@ -18448,6 +18548,47 @@ root.KiiPushInstallation = (function() {
       })(this));
     }
     return this._install(installationRegistrationID, "ANDROID", development, callbacks);
+  };
+
+
+  /** Register the id issued by APNS to the Kii cloud for current logged in user.
+  @param {String} deviceToken The ID of registration that identifies the installation externally.
+  @param {Boolean} development Indicates if the installation is for development or production environment.
+  @param {Object} [callbacks] An object with callback methods defined
+  @param {Method} callbacks.success The callback method to call on a successful resend request
+  <br>argument is response object. response.installationID is ID of the installation in the platform.
+  @param {Method} callbacks.failure The callback method to call on a failed resend request
+  <br>argument is Error object.
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(response).
+        <ul>
+          <li>response.installationID is ID of the installation in the platform.</li>
+        </ul>
+      </li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+  @example
+   */
+
+  KiiPushInstallation.prototype.installApns = function(deviceToken, development, callbacks) {
+    if (!KiiUtilities._isNonEmptyString(deviceToken)) {
+      return new Promise((function(_this) {
+        return function(resolve, reject) {
+          var errObj;
+          errObj = KiiUtilities._Error("deviceToken must not be null or empty.", _this);
+          if (callbacks != null) {
+            callbacks.failure(errObj);
+          }
+          return reject(errObj);
+        };
+      })(this));
+    }
+    return this._install(deviceToken, "IOS", development, callbacks);
   };
 
 
@@ -18750,7 +18891,7 @@ root.KiiPushInstallation = (function() {
   };
 
   KiiPushInstallation._validateDeviceType = function(deviceType) {
-    return deviceType === "ANDROID" || deviceType === "MQTT";
+    return deviceType === "ANDROID" || deviceType === "MQTT" || deviceType === "IOS";
   };
 
   KiiPushInstallation.prototype._setAuthToken = function(wrapper) {
@@ -19018,6 +19159,290 @@ root.KiiErrorParser = (function() {
 })();
 
 
+/**
+    @class Represents a KiiThingQuery object
+    @exports root.KiiThingQuery as KiiThingQuery
+ */
+
+root.KiiThingQuery = (function() {
+  function KiiThingQuery(owner, groups) {
+    this._dictValue = __bind(this._dictValue, this);
+    this.clone = __bind(this.clone, this);
+    this.getPaginationKey = __bind(this.getPaginationKey, this);
+    this.setPaginationKey = __bind(this.setPaginationKey, this);
+    this.getThingType = __bind(this.getThingType, this);
+    this.setThingType = __bind(this.setThingType, this);
+    this.getLimit = __bind(this.getLimit, this);
+    this.setLimit = __bind(this.setLimit, this);
+    if ((owner == null) && ((groups == null) || groups.length === 0)) {
+      throw root.InvalidArgumentException('Both the owner and groups parameter are optional, but at least one of them must be supplied.');
+    }
+    this._owner = owner;
+    this._groups = groups;
+    this._limit = 0;
+  }
+
+
+  /** Construct KiiThingQuery.<br>
+  Both an owner and groups parameters are optional,
+  but at least one of them must be supplied.
+  @param {KiiUser} [owner] of the thing. The user must be same as 
+  Login user or causes unauthorized error.
+  @param {KiiGroup[]} [groups] owns the thing. Login user must belongs
+  to all groups or causes unauthorized error.
+  @throws {InvalidArgumentException}
+  neither an owner nor groups parameters are supplied.
+   */
+
+  KiiThingQuery.thingQuery = function(owner, groups) {
+    return new root.KiiThingQuery(owner, groups);
+  };
+
+
+  /** Set the limit of the given query
+  @param limit The maximum number of items obtained in one request.<br>
+  If specified limit is <= 0, 0 will be applied.
+  This limit behaves in a best effort way. Actual number of returned result
+  can be smaller than the requested number.<br>
+  If the specified limit is greater than the limit of the server or limit is
+  set to 0, limit defined in server will be applied.
+   */
+
+  KiiThingQuery.prototype.setLimit = function(limit) {
+    if (limit > 0) {
+      return this._limit = limit;
+    } else {
+      return this._limit = 0;
+    }
+  };
+
+
+  /** Get the limit of the current query
+  @returns {Number}
+   */
+
+  KiiThingQuery.prototype.getLimit = function() {
+    return this._limit;
+  };
+
+
+  /** Set the thing type to filter the results.
+  @param thingType Thing type
+   */
+
+  KiiThingQuery.prototype.setThingType = function(thingType) {
+    return this._thingType = thingType;
+  };
+
+
+  /** Get the thing type
+  @returns {String}
+   */
+
+  KiiThingQuery.prototype.getThingType = function() {
+    return this._thingType;
+  };
+
+
+  /** Set the pagination key.
+  @param paginationKey Pagination key
+   */
+
+  KiiThingQuery.prototype.setPaginationKey = function(paginationKey) {
+    return this._paginationKey = paginationKey;
+  };
+
+
+  /** Get the pagination key.
+  @returns {String}
+   */
+
+  KiiThingQuery.prototype.getPaginationKey = function() {
+    return this._paginationKey;
+  };
+
+  KiiThingQuery.prototype.clone = function() {
+    var clone;
+    clone = new root.KiiThingQuery(root.KiiThingQuery._clone(this._owner), root.KiiThingQuery._clone(this._groups));
+    clone._limit = this._limit;
+    clone._thingType = this._thingType;
+    clone._paginationKey = this._paginationKey;
+    return clone;
+  };
+
+  KiiThingQuery._clone = function(obj) {
+    var key, newInstance;
+    if ((obj == null) || typeof obj !== 'object') {
+      return obj;
+    }
+    newInstance = new obj.constructor();
+    for (key in obj) {
+      newInstance[key] = KiiThingQuery._clone(obj[key]);
+    }
+    return newInstance;
+  };
+
+  KiiThingQuery.prototype._dictValue = function() {
+    var groupOwner, groupOwnerClause, ownerClause, ownerClauses, query, thingQuery, userOwnerClause, _i, _len, _ref;
+    query = {};
+    if ((this._limit != null) && this._limit > 0) {
+      query.bestEffortLimit = this._limit;
+    }
+    if (this._paginationKey != null) {
+      query.paginationKey = this._paginationKey;
+    }
+    ownerClauses = [];
+    if (this._owner != null) {
+      userOwnerClause = {
+        "type": "contains",
+        "field": "userOwners",
+        "value": this._owner.getID()
+      };
+      ownerClauses.push(userOwnerClause);
+    }
+    if ((this._groups != null) && this._groups.length > 0) {
+      _ref = this._groups;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        groupOwner = _ref[_i];
+        groupOwnerClause = {
+          "type": "contains",
+          "field": "groupOwners",
+          "value": groupOwner.getID()
+        };
+        ownerClauses.push(groupOwnerClause);
+      }
+    }
+    if (ownerClauses.length === 0) {
+      throw root.InvalidArgumentException("Query clause must include the 'contains' clause.");
+    } else if (ownerClauses.length === 1) {
+      ownerClause = ownerClauses[0];
+    } else {
+      ownerClause = {
+        "type": "or",
+        "clauses": ownerClauses
+      };
+    }
+    if (this._thingType != null) {
+      thingQuery = {
+        "clause": {
+          "type": "and",
+          "clauses": [
+            {
+              "type": "eq",
+              "field": "_thingType",
+              "value": this._thingType
+            }, ownerClause
+          ]
+        }
+      };
+    } else {
+      thingQuery = {
+        "clause": ownerClause
+      };
+    }
+    query.thingQuery = thingQuery;
+    return query;
+  };
+
+  return KiiThingQuery;
+
+})();
+
+
+/**
+    @class Represents a KiiThingQueryResult object
+    @exports root.KiiThingQueryResult as KiiThingQueryResult
+ */
+
+root.KiiThingQueryResult = (function() {
+  function KiiThingQueryResult(query, results, paginationKey) {
+    this.getNextResult = __bind(this.getNextResult, this);
+    this.getNextKiiThingQuery = __bind(this.getNextKiiThingQuery, this);
+    this.hasNext = __bind(this.hasNext, this);
+    this.getResult = __bind(this.getResult, this);
+    this._query = query;
+    this._results = results;
+    this._paginationKey = paginationKey;
+  }
+
+
+  /** Get the list of KiiThing that matches the query
+  @returns {Array} An array of KiiThing objects
+   */
+
+  KiiThingQueryResult.prototype.getResult = function() {
+    return this._results;
+  };
+
+
+  /** When there are many result of query or data in result is large, Query result would be divided into several pages.
+  @returns {Boolean} true if there are pending result of the Query to be retrieved.
+   */
+
+  KiiThingQueryResult.prototype.hasNext = function() {
+    return this._paginationKey != null;
+  };
+
+
+  /** Get the KiiThingQuery to get next page of the result.
+  @returns {KiiThingQuery} KiiThingQuery to get next page of the query. null when this result is the last part of the query.
+   */
+
+  KiiThingQueryResult.prototype.getNextKiiThingQuery = function() {
+    var nextQuery;
+    if (!this.hasNext()) {
+      return null;
+    }
+    nextQuery = this._query.clone();
+    nextQuery.setPaginationKey(this._paginationKey);
+    return nextQuery;
+  };
+
+
+  /** Fetch the query result of next page.
+  
+  <br><br>The query will be executed against the server, returning a result set.
+  When the state that #hasNext() is false,
+  method execution is failed and Promise returned by the method is rejected
+  and failure callback is called if the callback is given.
+  @param Object callbacks An object with callback methods defined
+  @param {Function} callbacks.success The callback method to call on a successful query request
+  @param {Function} callbacks.failure The callback method to call on a failed query request
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(result). result is KiiThingQueryResult instance.</li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.target is the KiiThing instance.</li>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+   */
+
+  KiiThingQueryResult.prototype.getNextResult = function(callbacks) {
+    if (!this.hasNext()) {
+      return new Promise((function(_this) {
+        return function(resolve, reject) {
+          var errObj, message;
+          message = "No more pages to fetch";
+          errObj = KiiUtilities._Error(message, _this);
+          if (callbacks != null) {
+            callbacks.failure(errObj);
+          }
+          return reject(errObj);
+        };
+      })(this));
+    } else {
+      return root.KiiThing.executeQuery(this.getNextKiiThingQuery(), callbacks);
+    }
+  };
+
+  return KiiThingQueryResult;
+
+})();
+
+
 return root;
 });  // generated by build.sh for running on Node.js
 
@@ -19026,7 +19451,7 @@ return root;
 var b = ((typeof module) !== "undefined") && (module !== null);
 if (b && module.exports) {
   module.exports = {
-    exportedClasses: ['ForTest', 'Kii', 'KiiACL', 'KiiACLEntry', 'KiiACLWithToken', 'KiiAnalytics', 'KiiAnonymousUser', 'KiiAnyAuthenticatedUser', 'KiiAppAdminContext', 'KiiBucket', 'KiiBucketWithToken', 'KiiClause', 'KiiEncryptedBucket', 'KiiEncryptedBucketWithToken', 'KiiErrorParser', 'KiiGeoPoint', 'KiiGroup', 'KiiGroupWithToken', 'KiiObject', 'KiiObjectWithToken', 'KiiPushInstallation', 'KiiPushInstallationWithToken', 'KiiPushSubscription', 'KiiPushSubscriptionWithToken', 'KiiQuery', 'KiiSCNFacebook', 'KiiSCNGoogle', 'KiiSCNQQ', 'KiiSCNRenRen', 'KiiSCNTwitter', 'KiiSDKClientInfo', 'KiiServerCodeEntry', 'KiiServerCodeExecResult', 'KiiSocialConnect', 'KiiSocialConnectNetwork', 'KiiThing', 'KiiThingContext', 'KiiThingWithToken', 'KiiTopic', 'KiiPushMessageBuilder', 'KiiTopicWithToken', 'KiiUser', 'KiiUserBuilder', 'KiiUserWithToken', 'KiiSocialNetworkName', 'KiiSite', '_KiiHttpRequestType', 'KiiACLAction', 'KiiAnalyticsSite', 'InvalidDisplayNameException', 'InvalidPasswordException', 'InvalidUsernameException', 'InvalidUserIdentifierException', 'InvalidEmailException', 'InvalidPhoneNumberException', 'InvalidLocalPhoneNumberException', 'InvalidCountryException', 'InvalidURIException', 'InvalidACLAction', 'InvalidACLSubject', 'InvalidACLGrant', 'InvalidLimitException', 'InvalidArgumentException', 'IllegalStateException', 'ArithmeticException', 'UnsupportedOperationException'],
+    exportedClasses: ['ForTest', 'Kii', 'KiiACL', 'KiiACLEntry', 'KiiACLWithToken', 'KiiAnalytics', 'KiiAnonymousUser', 'KiiAnyAuthenticatedUser', 'KiiAppAdminContext', 'KiiBucket', 'KiiBucketWithToken', 'KiiClause', 'KiiEncryptedBucket', 'KiiEncryptedBucketWithToken', 'KiiErrorParser', 'KiiGeoPoint', 'KiiGroup', 'KiiGroupWithToken', 'KiiObject', 'KiiObjectWithToken', 'KiiPushInstallation', 'KiiPushInstallationWithToken', 'KiiPushSubscription', 'KiiPushSubscriptionWithToken', 'KiiQuery', 'KiiSCNFacebook', 'KiiSCNGoogle', 'KiiSCNQQ', 'KiiSCNRenRen', 'KiiSCNTwitter', 'KiiSDKClientInfo', 'KiiServerCodeEntry', 'KiiServerCodeExecResult', 'KiiSocialConnect', 'KiiSocialConnectNetwork', 'KiiThing', 'KiiThingContext', 'KiiThingQuery', 'KiiThingQueryResult', 'KiiThingWithToken', 'KiiTopic', 'KiiPushMessageBuilder', 'KiiTopicWithToken', 'KiiUser', 'KiiUserBuilder', 'KiiUserWithToken', 'KiiSocialNetworkName', 'KiiSite', '_KiiHttpRequestType', 'KiiACLAction', 'KiiAnalyticsSite', 'InvalidDisplayNameException', 'InvalidPasswordException', 'InvalidUsernameException', 'InvalidUserIdentifierException', 'InvalidEmailException', 'InvalidPhoneNumberException', 'InvalidLocalPhoneNumberException', 'InvalidCountryException', 'InvalidURIException', 'InvalidACLAction', 'InvalidACLSubject', 'InvalidACLGrant', 'InvalidLimitException', 'InvalidArgumentException', 'IllegalStateException', 'ArithmeticException', 'UnsupportedOperationException'],
     create: function() {
       return ctor.call(this);
     }
