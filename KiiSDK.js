@@ -74,6 +74,11 @@ root.KiiSite = {
   EU: "https://api-eu.kii.com/api"
 };
 
+root.KiiServerCodeEnvironmentVersion = {
+  V0: "0",
+  V6: "6"
+};
+
 
 /**
     @class The main SDK class
@@ -108,7 +113,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.10";
+    return "2.4.11";
   };
 
   Kii.getBaseURL = function() {
@@ -497,28 +502,33 @@ root.Kii = (function() {
 
 
   /**
-  Instantiate KiiServerCodeEntry with specified entry name.
+  Instantiate KiiServerCodeEntry.
   @param {String} entryName Name of the entry.
+  @param {String} [version] Version of the entry.
+  @param {KiiServerCodeEnvironmentVersion} [environmentVersion] Version of the Node.js. Currently, supported versions are 0 and 6.
   @returns {KiiServerCodeEntry} KiiServerCodeEntry instance.
-  @throws {InvalidArgumentException} Thrown when entryName is invalid in the following cases:
-  <li>not type of string </li>
-  <li>empty string </li>
-  <li>invalid string. Valid entryName pattern is "[a-zA-Z][_a-zA-Z0-9]*$".</li>
+  @throws {InvalidArgumentException} Thrown in the following cases: <br>
+  <li>entryName or version is not type of string </li>
+  <li>entryName or version is empty string </li>
+  <li>entryName is invalid string. Valid entryName pattern is "[a-zA-Z][_a-zA-Z0-9]*$".</li>
   
   @example
-      var entry = Kii.serverCodeEntry("main");
+      var entry = Kii.serverCodeEntryWithVersion("main", "gulsdf6ful8jvf8uq6fe7vjy6", KiiServerCodeEnvironmentVersion.V0);
    */
 
-  Kii.serverCodeEntry = function(entryName) {
+  Kii.serverCodeEntry = function(entryName, version, environmentVersion) {
     if (!KiiUtilities._validateServerCodeEntryName(entryName)) {
       throw new root.InvalidArgumentException('entryName is invalid');
     }
-    return new root.KiiServerCodeEntry(entryName);
+    if (version && !KiiUtilities._validateServerCodeEnryVersion(version)) {
+      throw new root.InvalidArgumentException('version is invalid');
+    }
+    return new root.KiiServerCodeEntry(entryName, version, environmentVersion);
   };
 
 
   /**
-  Instantiate serverCodeEntryWithVersion with specified entry name and version.
+  @deprecated Use {@link Kii.serverCodeEntry} instead. Instantiate serverCodeEntryWithVersion with specified entry name and version.
   @param {String} entryName Name of the entry.
   @param {String} version Version of the entry.
   @returns {KiiServerCodeEntry} KiiServerCodeEntry instance.
@@ -14259,9 +14269,10 @@ root.KiiSCNQQ = (function(_super) {
  */
 
 root.KiiServerCodeEntry = (function() {
-  function KiiServerCodeEntry(entryName, version) {
+  function KiiServerCodeEntry(entryName, version, environmentVersion) {
     this.entryName = entryName;
     this.version = version;
+    this.environmentVersion = environmentVersion;
   }
 
 
@@ -14373,6 +14384,9 @@ root.KiiServerCodeEntry = (function() {
     versionName = (_ref = this.version) != null ? _ref : "current";
     jsonBody = JSON.stringify(requestData);
     url = root.Kii.getBaseURL() + "/apps/" + root.Kii.getAppID() + ("/server-code/versions/" + versionName + "/" + this.entryName);
+    if (this.environmentVersion) {
+      url += "?environment-version=" + this.environmentVersion;
+    }
     wrapper = KiiXHRWrapperFactory.createXHRWrapper("POST", url);
     xhr = wrapper.xhr;
     xhr.setRequestHeader("x-kii-appid", root.Kii.getAppID());
@@ -14385,11 +14399,12 @@ root.KiiServerCodeEntry = (function() {
     serverCodeExecutionCallBacks = {
       success: (function(_this) {
         return function() {
-          var errorString, execResult, returnObject, stepCount;
+          var environmentVersion, errorString, execResult, returnObject, stepCount;
           stepCount = xhr.getResponseHeader("x-step-count");
+          environmentVersion = xhr.getResponseHeader("x-environment-version");
           try {
             returnObject = JSON.parse(xhr.responseText);
-            execResult = new root.KiiServerCodeExecResult(returnObject, stepCount);
+            execResult = new root.KiiServerCodeExecResult(returnObject, stepCount, environmentVersion);
             if (callbacks != null) {
               return callbacks.success(_this, argument, execResult);
             }
@@ -14454,9 +14469,10 @@ root.KiiServerCodeEntry = (function() {
  */
 
 root.KiiServerCodeExecResult = (function() {
-  function KiiServerCodeExecResult(returnObject, exeSteps) {
+  function KiiServerCodeExecResult(returnObject, exeSteps, environmentVersion) {
     this.returnObject = returnObject;
     this.exeSteps = exeSteps;
+    this.environmentVersion = environmentVersion;
   }
 
 
@@ -14467,6 +14483,16 @@ root.KiiServerCodeExecResult = (function() {
 
   KiiServerCodeExecResult.prototype.getExecutedSteps = function() {
     return this.exeSteps;
+  };
+
+
+  /**
+      Get the version of Node.js which the server code was executed.
+      @returns {String} version of Node.js
+   */
+
+  KiiServerCodeExecResult.prototype.getEnvironmentVersion = function() {
+    return this.environmentVersion;
   };
 
 
@@ -14504,11 +14530,13 @@ root.KiiThing = (function() {
     this.topicWithName = __bind(this.topicWithName, this);
     this.encryptedBucketWithName = __bind(this.encryptedBucketWithName, this);
     this.bucketWithName = __bind(this.bucketWithName, this);
+    this.updatePassword = __bind(this.updatePassword, this);
     this._changeStatus = __bind(this._changeStatus, this);
     this.enable = __bind(this.enable, this);
     this.disable = __bind(this.disable, this);
     this.unregisterOwner = __bind(this.unregisterOwner, this);
     this._getOwnerURL = __bind(this._getOwnerURL, this);
+    this.registerOwnerWithPassword = __bind(this.registerOwnerWithPassword, this);
     this.registerOwner = __bind(this.registerOwner, this);
     this.isOwner = __bind(this.isOwner, this);
     this.deleteThing = __bind(this.deleteThing, this);
@@ -15241,6 +15269,7 @@ root.KiiThing = (function() {
         </ul>
       </li>
     </ul>
+  @deprecated Use {@link KiiThing.registerOwnerWithPassword} instead.
   @example
   // example to use callbacks directly
   // assume thing/group is already registered.
@@ -15311,6 +15340,87 @@ root.KiiThing = (function() {
 
 
   /**
+  Register user/group as owner of this thing.
+  <br>Need user login before execute this API.
+  <br>Note: if you obtain thing instance from {@link KiiAppAdminContext},
+  API is authorized by app admin.<br>
+  
+  @param {KiiUser or KiiGroup} owner to be registered as owner.
+  @param {String} [password] the thing password
+  @param {Object} [callbacks] object holds callback functions.
+  @param {Function} callbacks.success callback called when operation succeeded.
+  <br>1st argument: thing object.
+  <br>2nd argument: user/group object registered as owner.
+  @param {Function} callbacks.failure callback called when operation failed.
+  <br>argument is Error object.
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(params). params is an Array instance.
+        <ul>
+          <li>params[0] is the KiiThing instance which this method was called on.</li>
+          <li>params[1] is a KiiUser/KiiGroup instance.</li>
+        </ul>
+      </li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.target is the KiiThing instance which this method was called on.</li>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+  @example
+  // example to use callbacks directly
+  // assume thing/group is already registered.
+  var group = KiiGroup.groupWithURI("kiicloud://groups/xxxyyyy");
+  thing.registerOwnerWithPassword(group, "Thing password", {
+      success: function(thing, group) {
+          // Register owner succeeded.
+      },
+      failure: function(error) {
+          // Handle error.
+      }
+  });
+  
+  // example to use Promise
+  // assume thing/group is already registered.
+  var group = KiiGroup.groupWithURI("kiicloud://groups/xxxyyyy");
+  thing.registerOwnerWithPassword(group, "Thing password").then(
+      function(params) {
+          // Register owner succeeded.
+          var thing = params[0];
+          var group = params[1];
+      },
+      function(error) {
+          // Handle error.
+      }
+  );
+   */
+
+  KiiThing.prototype.registerOwnerWithPassword = function(owner, password, callbacks) {
+    return new Promise((function(_this) {
+      return function(resolve, reject) {
+        var registerCallbacks;
+        registerCallbacks = {
+          success: function() {
+            if (callbacks != null) {
+              callbacks.success(_this, owner);
+            }
+            return resolve([_this, owner]);
+          },
+          failure: function(error) {
+            if (callbacks != null) {
+              callbacks.failure(error);
+            }
+            return reject(error);
+          }
+        };
+        return root.KiiThing._registerOwnerWithIdentifierAndPassword(_this._thingID, owner, password, registerCallbacks);
+      };
+    })(this));
+  };
+
+
+  /**
   Register user/group as owner of specified thing.
   <br>Need user login before execute this API.
   <br>Note: if you obtain thing instance from {@link KiiAppAdminContext},
@@ -15336,6 +15446,7 @@ root.KiiThing = (function() {
         </ul>
       </li>
     </ul>
+  @deprecated Use {@link KiiThing.registerOwnerWithThingIDAndPassword} instead.
   @example
   // example to use callbacks directly
   // assume thing/group is already registered.
@@ -15374,6 +15485,64 @@ root.KiiThing = (function() {
   <br>Note: if you obtain thing instance from {@link KiiAppAdminContext},
   API is authorized by app admin.<br>
   
+  @param {String} thingID The ID of thing
+  @param {KiiUser or KiiGroup} owner instance of KiiUser/KiiGroup to be registered as owner.
+  @param {String} [password] the thing password
+  @param {Object} [callbacks] object holds callback functions.
+  @param {Function} callbacks.success callback called when operation succeeded.
+  <br>1st argument: user/group object registered as owner.
+  @param {Function} callbacks.failure callback called when operation failed.
+  <br>argument is Error object.
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(owner).
+        <ul>
+          <li>owner is a KiiUser/KiiGroup instance.</li>
+        </ul>
+      </li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+  @example
+  // example to use callbacks directly
+  // assume thing/group is already registered.
+  var group = KiiGroup.groupWithURI("kiicloud://groups/xxxyyyy");
+  KiiThing.registerOwnerWithThingIDAndPassword("th.xxxx-yyyy-zzzz", group, "Thing password", {
+      success: function(owner) {
+          // Register owner succeeded.
+      },
+      failure: function(error) {
+          // Handle error.
+      }
+  });
+  
+  // example to use Promise
+  // assume thing/group is already registered.
+  var group = KiiGroup.groupWithURI("kiicloud://groups/xxxyyyy");
+  KiiThing.registerOwnerWithThingIDAndPassword("th.xxxx-yyyy-zzzz", group, "Thing password").then(
+      function(owner) {
+          // Register owner succeeded.
+      },
+      function(error) {
+          // Handle error.
+      }
+  );
+   */
+
+  KiiThing.registerOwnerWithThingIDAndPassword = function(thingID, owner, password, callbacks) {
+    return root.KiiThing._registerOwnerWithIdentifierAndPassword(thingID, owner, password, callbacks);
+  };
+
+
+  /**
+  Register user/group as owner of specified thing.
+  <br>Need user login before execute this API.
+  <br>Note: if you obtain thing instance from {@link KiiAppAdminContext},
+  API is authorized by app admin.<br>
+  
   @param {String} vendorThingID The vendor thing ID of thing
   @param {KiiUser or KiiGroup} owner instance of KiiUser/KiiGroup to be registered as owner.
   @param {Object} [callbacks] object holds callback functions.
@@ -15394,6 +15563,7 @@ root.KiiThing = (function() {
         </ul>
       </li>
     </ul>
+  @deprecated Use {@link KiiThing.registerOwnerWithVendorThingIDAndPassword} instead.
   @example
   // example to use callbacks directly
   // assume thing/group is already registered.
@@ -15425,6 +15595,67 @@ root.KiiThing = (function() {
       return root.KiiThing._registerOwnerWithIdentifier(null, owner, callbacks);
     }
     return root.KiiThing._registerOwnerWithIdentifier("VENDOR_THING_ID:" + vendorThingID, owner, callbacks);
+  };
+
+
+  /**
+  Register user/group as owner of specified thing.
+  <br>Need user login before execute this API.
+  <br>Note: if you obtain thing instance from {@link KiiAppAdminContext},
+  API is authorized by app admin.<br>
+  
+  @param {String} vendorThingID The vendor thing ID of thing
+  @param {KiiUser or KiiGroup} owner instance of KiiUser/KiiGroup to be registered as owner.
+  @param {String} [password] the thing password
+  @param {Object} [callbacks] object holds callback functions.
+  @param {Function} callbacks.success callback called when operation succeeded.
+  <br>1st argument: user/group object registered as owner.
+  @param {Function} callbacks.failure callback called when operation failed.
+  <br>argument is Error object.
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(owner).
+        <ul>
+          <li>owner is a KiiUser/KiiGroup instance.</li>
+        </ul>
+      </li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+  @example
+  // example to use callbacks directly
+  // assume thing/group is already registered.
+  var group = KiiGroup.groupWithURI("kiicloud://groups/xxxyyyy");
+  KiiThing.registerOwnerWithVendorThingIDAndPassword("xxxx-yyyy-zzzz", group, "Thing password", {
+      success: function(owner) {
+          // Register owner succeeded.
+      },
+      failure: function(error) {
+          // Handle error.
+      }
+  });
+  
+  // example to use Promise
+  // assume thing/group is already registered.
+  var group = KiiGroup.groupWithURI("kiicloud://groups/xxxyyyy");
+  KiiThing.registerOwnerWithVendorThingIDAndPassword("xxxx-yyyy-zzzz", group, "Thing password").then(
+      function(owner) {
+          // Register owner succeeded.
+      },
+      function(error) {
+          // Handle error.
+      }
+  );
+   */
+
+  KiiThing.registerOwnerWithVendorThingIDAndPassword = function(vendorThingID, owner, password, callbacks) {
+    if (!KiiUtilities._isNonEmptyString(vendorThingID)) {
+      return root.KiiThing._registerOwnerWithIdentifierAndPassword(null, owner, password, callbacks);
+    }
+    return root.KiiThing._registerOwnerWithIdentifierAndPassword("VENDOR_THING_ID:" + vendorThingID, owner, password, callbacks);
   };
 
   KiiThing._registerOwnerWithIdentifier = function(identifier, owner, callbacks) {
@@ -15478,6 +15709,74 @@ root.KiiThing = (function() {
         }
       };
       return wrapper.send(sendCallbacks);
+    });
+  };
+
+  KiiThing._registerOwnerWithIdentifierAndPassword = function(identifier, owner, password, callbacks) {
+    return new Promise(function(resolve, reject) {
+      var errObj, requestBody, sendCallbacks, url, wrapper;
+      if (!KiiUtilities._isNonEmptyString(identifier)) {
+        errObj = KiiUtilities._Error("identifier is null or empty");
+        if (callbacks != null) {
+          callbacks.failure(errObj);
+        }
+        reject(errObj);
+        return;
+      }
+      if (owner == null) {
+        errObj = KiiUtilities._Error("owner is null");
+        if (callbacks != null) {
+          callbacks.failure(errObj);
+        }
+        reject(errObj);
+        return;
+      }
+      if (!KiiUtilities._isNonEmptyString(password)) {
+        errObj = KiiUtilities._Error("password is null or empty");
+        if (callbacks != null) {
+          callbacks.failure(errObj);
+        }
+        reject(errObj);
+        return;
+      }
+      url = "" + (root.Kii.getBaseURL()) + "/apps/" + (root.Kii.getAppID()) + "/things/" + identifier + "/ownership";
+      wrapper = KiiXHRWrapperFactory.createXHRWrapper('POST', url);
+      wrapper.setKiiHeaders();
+      wrapper.setContentType("application/vnd.kii.ThingOwnershipRequest+json");
+      root.KiiThing.prototype._setAuthToken(wrapper);
+      requestBody = {
+        thingPassword: password
+      };
+      if (owner instanceof root.KiiUser) {
+        requestBody.userID = owner.getID();
+      } else if (owner instanceof root.KiiGroup) {
+        requestBody.groupID = owner.getID();
+      } else {
+        errObj = KiiUtilities._Error("owner should be instance of KiiUser or KiiGroup");
+        if (callbacks != null) {
+          callbacks.failure(errObj);
+        }
+        reject(errObj);
+        return;
+      }
+      sendCallbacks = {
+        success: function() {
+          if (callbacks != null) {
+            callbacks.success(owner);
+          }
+          return resolve(owner);
+        },
+        failure: function() {
+          var errString;
+          errString = wrapper.getErrorString("register owner");
+          errObj = KiiUtilities._Error(errString);
+          if (callbacks != null) {
+            callbacks.failure(errObj);
+          }
+          return reject(errObj);
+        }
+      };
+      return wrapper.sendData(JSON.stringify(requestBody), sendCallbacks);
     });
   };
 
@@ -15738,6 +16037,58 @@ root.KiiThing = (function() {
         return wrapper.sendData(JSON.stringify(data), sendCallbacks);
       };
     })(this));
+  };
+
+
+  /** Updates thing password. This method can be used only by app admin.
+  
+  <br>
+  @param {String} newPassword new password
+  @param {Object} [callbacks] object holds callback functions.
+  @param {Function} callbacks.success callback called when operation succeeded.
+  <br>argument is this thing.
+  @param {Function} callbacks.failure callback called when operation failed.
+  <br>argument is Error object.
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(thing). thing is a KiiThing instance.</li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.target is the KiiThing instance which this method was called on.</li>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+  @example
+  // example to use callbacks directly
+  // assume thing is already registered and you had an adminContext.
+  adminContext.thingWithID(thing.getThingID()).updatePassword("new password", {
+    success: function(thing) {
+      // Update succeeded.
+    },
+    failure: function(error) {
+      // Handle error.
+    }
+  });
+  // example to use Promise
+  // assume thing is already registered and you had an adminContext.
+  adminContext.thingWithID(thing.getThingID()).updatePassword("new password").then(
+      function(thing) {
+          // Update succeeded.
+      },
+      function(error) {
+          // Handle error.
+      }
+  );
+   */
+
+  KiiThing.prototype.updatePassword = function(newPassword, callbacks) {
+    var errObj;
+    errObj = KiiUtilities._Error("updatePassword can be used only by app admin.");
+    if (callbacks != null) {
+      callbacks.failure(errObj);
+    }
+    return Promise.reject(errObj);
   };
 
 
@@ -17106,6 +17457,8 @@ root.KiiThingWithToken = (function(_super) {
 
   function KiiThingWithToken(fields, thingID, vendorThingID, _adminToken) {
     this._adminToken = _adminToken;
+    this._getIdentifier = __bind(this._getIdentifier, this);
+    this.updatePassword = __bind(this.updatePassword, this);
     this.topicWithName = __bind(this.topicWithName, this);
     this.bucketWithName = __bind(this.bucketWithName, this);
     this.pushSubscription = __bind(this.pushSubscription, this);
@@ -17230,6 +17583,57 @@ root.KiiThingWithToken = (function(_super) {
       throw new root.InvalidArgumentException('topicName should not null or empty');
     }
     return new root.KiiTopicWithToken(this._getHttpURI(), topicName, this._adminToken);
+  };
+
+  KiiThingWithToken.prototype.updatePassword = function(newPassword, callbacks) {
+    return new Promise((function(_this) {
+      return function(resolve, reject) {
+        var errObj, requestBody, sendCallbacks, wrapper;
+        if (!KiiUtilities._isNonEmptyString(newPassword)) {
+          errObj = KiiUtilities._Error("newPassword is null or empty");
+          if (callbacks != null) {
+            callbacks.failure(errObj);
+          }
+          reject(errObj);
+          return;
+        }
+        requestBody = {
+          newPassword: newPassword
+        };
+        wrapper = KiiXHRWrapperFactory.createXHRWrapper('PUT', "" + (root.Kii.getBaseURL()) + "/apps/" + (root.Kii.getAppID()) + "/things/" + (_this._getIdentifier()) + "/password");
+        wrapper.setKiiHeaders();
+        wrapper.setAuthToken(_this._adminToken);
+        wrapper.setContentType("application/vnd.kii.ChangeThingPasswordRequest+json");
+        sendCallbacks = {
+          success: function() {
+            if (callbacks != null) {
+              callbacks.success(_this);
+            }
+            return resolve(_this);
+          },
+          failure: function() {
+            var errString;
+            errString = wrapper.getErrorString("changing thing password");
+            errObj = KiiUtilities._Error(errString);
+            if (callbacks != null) {
+              callbacks.failure(errObj);
+            }
+            return reject(errObj);
+          }
+        };
+        return wrapper.sendData(JSON.stringify(requestBody), sendCallbacks);
+      };
+    })(this));
+  };
+
+  KiiThingWithToken.prototype._getIdentifier = function() {
+    if (this._thingID != null) {
+      return this._thingID;
+    }
+    if (this._vendorThingID != null) {
+      return "VENDOR_THING_ID:" + this._vendorThingID;
+    }
+    return null;
   };
 
   KiiThingWithToken.thingWithID = function(thingID, adminToken) {
@@ -18775,7 +19179,7 @@ root.KiiPushInstallation = (function() {
 
   /** Unregister the push settings by the id(issued by push provider) that is used for installation.
   @param {String} installationRegistrationID The ID of registration that identifies the installation externally.
-  @param {String} deviceType The type of the installation, current implementation only supports "ANDROID" and "MQTT".
+  @param {String} deviceType The type of the installation. Supported types are "ANDROID", "IOS" and "MQTT".
   @param {Object} [callbacks] An object with callback methods defined
   @param {Method} callbacks.success The callback method to call on a successful resend request
   @param {Method} callbacks.failure The callback method to call on a failed resend request
@@ -19451,7 +19855,7 @@ return root;
 var b = ((typeof module) !== "undefined") && (module !== null);
 if (b && module.exports) {
   module.exports = {
-    exportedClasses: ['ForTest', 'Kii', 'KiiACL', 'KiiACLEntry', 'KiiACLWithToken', 'KiiAnalytics', 'KiiAnonymousUser', 'KiiAnyAuthenticatedUser', 'KiiAppAdminContext', 'KiiBucket', 'KiiBucketWithToken', 'KiiClause', 'KiiEncryptedBucket', 'KiiEncryptedBucketWithToken', 'KiiErrorParser', 'KiiGeoPoint', 'KiiGroup', 'KiiGroupWithToken', 'KiiObject', 'KiiObjectWithToken', 'KiiPushInstallation', 'KiiPushInstallationWithToken', 'KiiPushSubscription', 'KiiPushSubscriptionWithToken', 'KiiQuery', 'KiiSCNFacebook', 'KiiSCNGoogle', 'KiiSCNQQ', 'KiiSCNRenRen', 'KiiSCNTwitter', 'KiiSDKClientInfo', 'KiiServerCodeEntry', 'KiiServerCodeExecResult', 'KiiSocialConnect', 'KiiSocialConnectNetwork', 'KiiThing', 'KiiThingContext', 'KiiThingQuery', 'KiiThingQueryResult', 'KiiThingWithToken', 'KiiTopic', 'KiiPushMessageBuilder', 'KiiTopicWithToken', 'KiiUser', 'KiiUserBuilder', 'KiiUserWithToken', 'KiiSocialNetworkName', 'KiiSite', '_KiiHttpRequestType', 'KiiACLAction', 'KiiAnalyticsSite', 'InvalidDisplayNameException', 'InvalidPasswordException', 'InvalidUsernameException', 'InvalidUserIdentifierException', 'InvalidEmailException', 'InvalidPhoneNumberException', 'InvalidLocalPhoneNumberException', 'InvalidCountryException', 'InvalidURIException', 'InvalidACLAction', 'InvalidACLSubject', 'InvalidACLGrant', 'InvalidLimitException', 'InvalidArgumentException', 'IllegalStateException', 'ArithmeticException', 'UnsupportedOperationException'],
+    exportedClasses: ['Kii', 'KiiThing', 'ForTest', 'KiiACL', 'KiiACLEntry', 'KiiACLWithToken', 'KiiAnalytics', 'KiiAnonymousUser', 'KiiAnyAuthenticatedUser', 'KiiAppAdminContext', 'KiiBucket', 'KiiBucketWithToken', 'KiiClause', 'KiiEncryptedBucket', 'KiiEncryptedBucketWithToken', 'KiiErrorParser', 'KiiGeoPoint', 'KiiGroup', 'KiiGroupWithToken', 'KiiObject', 'KiiObjectWithToken', 'KiiPushInstallation', 'KiiPushInstallationWithToken', 'KiiPushSubscription', 'KiiPushSubscriptionWithToken', 'KiiQuery', 'KiiSCNFacebook', 'KiiSCNGoogle', 'KiiSCNQQ', 'KiiSCNRenRen', 'KiiSCNTwitter', 'KiiSDKClientInfo', 'KiiServerCodeEntry', 'KiiServerCodeExecResult', 'KiiSocialConnect', 'KiiSocialConnectNetwork', 'KiiThingContext', 'KiiThingQuery', 'KiiThingQueryResult', 'KiiThingWithToken', 'KiiTopic', 'KiiPushMessageBuilder', 'KiiTopicWithToken', 'KiiUser', 'KiiUserBuilder', 'KiiUserWithToken', 'KiiSocialNetworkName', 'KiiSite', 'KiiServerCodeEnvironmentVersion', '_KiiHttpRequestType', 'KiiACLAction', 'KiiAnalyticsSite', 'InvalidDisplayNameException', 'InvalidPasswordException', 'InvalidUsernameException', 'InvalidUserIdentifierException', 'InvalidEmailException', 'InvalidPhoneNumberException', 'InvalidLocalPhoneNumberException', 'InvalidCountryException', 'InvalidURIException', 'InvalidACLAction', 'InvalidACLSubject', 'InvalidACLGrant', 'InvalidLimitException', 'InvalidArgumentException', 'IllegalStateException', 'ArithmeticException', 'UnsupportedOperationException'],
     create: function() {
       return ctor.call(this);
     }
