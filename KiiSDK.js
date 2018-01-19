@@ -337,23 +337,7 @@ root.Kii = (function() {
   Kii.getCurrentUser = function() {
     var user;
     if (_instance._currentUser != null) {
-      user = new root.KiiUser();
-      user._uuid = _instance._currentUser._uuid;
-      user._username = _instance._currentUser._username;
-      user._displayName = _instance._currentUser._displayName;
-      user._password = _instance._currentUser._password;
-      user._emailAddress = _instance._currentUser._emailAddress;
-      user._phoneNumber = _instance._currentUser._phoneNumber;
-      user._country = _instance._currentUser._country;
-      user._created = _instance._currentUser._created;
-      user._modified = _instance._currentUser._modified;
-      user._emailVerified = _instance._currentUser._emailVerified;
-      user._phoneVerified = _instance._currentUser._phoneVerified;
-      user._accessToken = _instance._currentUser._accessToken;
-      user._customInfo = _instance._currentUser._customInfo;
-      user._expiresAt = _instance._currentUser._expiresAt;
-      user._thirdPartyAccounts = _instance._currentUser._thirdPartyAccounts;
-      user._disabled = _instance._currentUser._disabled;
+      user = KiiUtilities._clone(_instance._currentUser);
       root.Kii.logger("my instance:");
       root.Kii.logger(user);
       return user;
@@ -363,23 +347,7 @@ root.Kii = (function() {
   };
 
   Kii.setCurrentUser = function(user) {
-    _instance._currentUser = new root.KiiUser();
-    _instance._currentUser._uuid = user._uuid;
-    _instance._currentUser._username = user._username;
-    _instance._currentUser._displayName = user._displayName;
-    _instance._currentUser._password = user._password;
-    _instance._currentUser._emailAddress = user._emailAddress;
-    _instance._currentUser._phoneNumber = user._phoneNumber;
-    _instance._currentUser._country = user._country;
-    _instance._currentUser._created = user._created;
-    _instance._currentUser._modified = user._modified;
-    _instance._currentUser._emailVerified = user._emailVerified;
-    _instance._currentUser._phoneVerified = user._phoneVerified;
-    _instance._currentUser._accessToken = user._accessToken;
-    _instance._currentUser._customInfo = user._customInfo;
-    _instance._currentUser._expiresAt = user._expiresAt;
-    _instance._currentUser._thirdPartyAccounts = user._thirdPartyAccounts;
-    _instance._currentUser._disabled = user._disabled;
+    _instance._currentUser = KiiUtilities._clone(user);
     root.Kii.logger("my instance:");
     return root.Kii.logger(_instance._currentUser);
   };
@@ -11063,6 +11031,37 @@ KiiUtilities = (function() {
     return e;
   };
 
+  KiiUtilities._clone = function(obj) {
+    var flags, key, newInstance;
+    if ((obj == null) || typeof obj !== 'object') {
+      return obj;
+    }
+    if (obj instanceof Date) {
+      return new Date(obj.getTime());
+    }
+    if (obj instanceof RegExp) {
+      flags = '';
+      if (obj.global) {
+        flags += 'g';
+      }
+      if (obj.ignoreCase) {
+        flags += 'i';
+      }
+      if (obj.multiline) {
+        flags += 'm';
+      }
+      if (obj.sticky) {
+        flags += 'y';
+      }
+      return new RegExp(obj.source, flags);
+    }
+    newInstance = new obj.constructor();
+    for (key in obj) {
+      newInstance[key] = KiiUtilities._clone(obj[key]);
+    }
+    return newInstance;
+  };
+
   return KiiUtilities;
 
 })();
@@ -11997,6 +11996,7 @@ root.KiiSocialConnectNetwork = (function() {
           root.Kii.setCurrentUser(user);
           refreshCallback = {
             success: function(refreshedUser) {
+              root.Kii.setCurrentUser(refreshedUser);
               if (callbacks != null) {
                 return callbacks.success(refreshedUser, _this._network);
               }
@@ -12037,6 +12037,7 @@ root.KiiSocialConnectNetwork = (function() {
           _this._setTokenObject(tokenObject);
           refreshCallback = {
             success: function(refreshedUser) {
+              root.Kii.setCurrentUser(refreshedUser);
               if (callbacks != null) {
                 return callbacks.success(refreshedUser, _this._network);
               }
@@ -12068,12 +12069,24 @@ root.KiiSocialConnectNetwork = (function() {
     unlinkCallbacks = {
       success: (function(_this) {
         return function(data) {
+          var refreshCallback;
           _this._setToken(null);
           _this._setTokenExpiration(null);
           _this._setTokenObject(null);
-          if (callbacks != null) {
-            return callbacks.success(root.KiiUser.getCurrentUser(), _this._network);
-          }
+          refreshCallback = {
+            success: function(refreshedUser) {
+              root.Kii.setCurrentUser(refreshedUser);
+              if (callbacks != null) {
+                return callbacks.success(refreshedUser, _this._network);
+              }
+            },
+            failure: function(theUser, error) {
+              if (callbacks != null) {
+                return callbacks.failure(theUser, _this._network, error);
+              }
+            }
+          };
+          return root.KiiUser.getCurrentUser().refresh(refreshCallback);
         };
       })(this),
       failure: (function(_this) {
