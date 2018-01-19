@@ -113,7 +113,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.11";
+    return "2.4.12";
   };
 
   Kii.getBaseURL = function() {
