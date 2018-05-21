@@ -113,7 +113,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.12";
+    return "2.4.13";
   };
 
   Kii.getBaseURL = function() {
@@ -10776,16 +10776,13 @@ KiiUtilities = (function() {
 
   KiiUtilities._validateEmail = function(value) {
     var pattern;
-    value = KiiUtilities._trim(value);
-    pattern = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,6}$/i;
     if ((typeof value).toLowerCase() !== "string") {
       root.Kii.logger("Not string");
       return false;
-    } else if (value.match(pattern)) {
-      return true;
-    } else {
-      return false;
     }
+    value = KiiUtilities._trim(value);
+    pattern = /^[^@]+@[^@]+$/;
+    return pattern.test(value);
   };
 
   KiiUtilities._validatePhoneNumber = function(value) {
