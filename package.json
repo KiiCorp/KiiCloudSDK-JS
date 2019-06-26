@@ -1,6 +1,6 @@
 {
   "name": "kii-cloud-sdk",
-  "version": "2.4.13",
+  "version": "2.4.14",
   "description": "This is the Kii Cloud SDK",
   "author": "Kii Corp",
   "licenses": [
@@ -19,6 +19,7 @@
     "test": "echo \"no test specified\" && exit 0"
   },
   "dependencies": {
+    "phantomjs": "^2.1.7",
     "xmlhttprequest": "1.8.0"
   },
   "devDependencies": {
