@@ -113,7 +113,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.13";
+    return "2.4.14";
   };
 
   Kii.getBaseURL = function() {
@@ -210,7 +210,7 @@ root.Kii = (function() {
   Should be the first Kii SDK action your application makes.
   @param String appID The application ID found in your Kii developer console
   @param String appKey The application key found in your Kii developer console
-  @param KiiSite site Can be one of the constants KiiSite.US, KiiSite.JP, KiiSite.CN or KiiSite.SG depending on your location.
+  @param KiiSite site Can be one of the constants KiiSite.US, KiiSite.JP, KiiSite.SG depending on your location.
   @param [analyticsOption] An object used for initializing KiiAnalytics, If not provided or invalid object provided, KiiAnalytics won't be initialized. If provided, it can be empty object or with analyticsOption.deviceId.<br> If provided, but deviceId is not provided, SDK generates a new deviceId and use it when upload events. It can be retrieved by {@link KiiAnalytics.getDeviceId()}. It is recommended to retrieve the deviceId and store it to identify the device properly.
   @example
   // Disable KiiAnalytics
@@ -11283,26 +11283,6 @@ root.KiiSocialConnect = (function() {
               </tbody>
               </table>
   
-              <br><b> Renren </b>
-              <table border="1" cellspacing="0">
-              <thead>
-              <tr bgcolor="#CCCCFF">
-                  <th>Key</th>
-                  <th>Value type</th>
-                  <th>Value</th>
-                  <th>Note</th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr>
-                  <td>access_token</td>
-                  <td>String</td>
-                  <td>Access token of Renren.</td>
-                  <td>This is mandatory.</td>
-              </tr>
-              </tbody>
-              </table>
-  
               <br><b> QQ </b>
               <table border="1" cellspacing="0">
               <thead>
@@ -11499,26 +11479,6 @@ root.KiiSocialConnect = (function() {
                   <td>access_token</td>
                   <td>String</td>
                   <td>Access token of Google.</td>
-                  <td>This is mandatory.</td>
-              </tr>
-              </tbody>
-              </table>
-  
-              <br><b> Renren </b>
-              <table border="1" cellspacing="0">
-              <thead>
-              <tr bgcolor="#CCCCFF">
-                  <th>Key</th>
-                  <th>Value type</th>
-                  <th>Value</th>
-                  <th>Note</th>
-              </tr>
-              </thead>
-              <tbody>
-              <tr>
-                  <td>access_token</td>
-                  <td>String</td>
-                  <td>Access token of Renren.</td>
                   <td>This is mandatory.</td>
               </tr>
               </tbody>
@@ -11790,10 +11750,6 @@ root.KiiSocialConnect = (function() {
   <li>kii_new_user</li>
   <br>
   <b>Google</b>
-  <li>access_token</li>
-  <li>kii_new_user</li>
-  <br>
-  <b>RenRen</b>
   <li>access_token</li>
   <li>kii_new_user</li>
   <br>
@@ -19865,7 +19821,7 @@ return root;
 var b = ((typeof module) !== "undefined") && (module !== null);
 if (b && module.exports) {
   module.exports = {
-    exportedClasses: ['ForTest', 'Kii', 'KiiACL', 'KiiACLEntry', 'KiiACLWithToken', 'KiiAnalytics', 'KiiAnonymousUser', 'KiiAnyAuthenticatedUser', 'KiiAppAdminContext', 'KiiBucket', 'KiiBucketWithToken', 'KiiClause', 'KiiEncryptedBucket', 'KiiEncryptedBucketWithToken', 'KiiErrorParser', 'KiiGeoPoint', 'KiiGroup', 'KiiGroupWithToken', 'KiiObject', 'KiiObjectWithToken', 'KiiPushInstallation', 'KiiPushInstallationWithToken', 'KiiPushSubscription', 'KiiPushSubscriptionWithToken', 'KiiQuery', 'KiiSCNFacebook', 'KiiSCNGoogle', 'KiiSCNQQ', 'KiiSCNRenRen', 'KiiSCNTwitter', 'KiiSDKClientInfo', 'KiiServerCodeEntry', 'KiiServerCodeExecResult', 'KiiSocialConnect', 'KiiSocialConnectNetwork', 'KiiThing', 'KiiThingContext', 'KiiThingQuery', 'KiiThingQueryResult', 'KiiThingWithToken', 'KiiTopic', 'KiiPushMessageBuilder', 'KiiTopicWithToken', 'KiiUser', 'KiiUserBuilder', 'KiiUserWithToken', 'KiiSocialNetworkName', 'KiiSite', 'KiiServerCodeEnvironmentVersion', '_KiiHttpRequestType', 'KiiACLAction', 'KiiAnalyticsSite', 'InvalidDisplayNameException', 'InvalidPasswordException', 'InvalidUsernameException', 'InvalidUserIdentifierException', 'InvalidEmailException', 'InvalidPhoneNumberException', 'InvalidLocalPhoneNumberException', 'InvalidCountryException', 'InvalidURIException', 'InvalidACLAction', 'InvalidACLSubject', 'InvalidACLGrant', 'InvalidLimitException', 'InvalidArgumentException', 'IllegalStateException', 'ArithmeticException', 'UnsupportedOperationException'],
+    exportedClasses: ['KiiEncryptedBucketWithToken', 'KiiTopic', 'KiiPushMessageBuilder', 'KiiThing', 'KiiACLWithToken', 'KiiGroup', 'Kii', 'KiiPushInstallation', 'KiiPushSubscription', 'KiiGroupWithToken', 'KiiAppAdminContext', 'KiiSDKClientInfo', 'KiiBucket', 'KiiSCNQQ', 'KiiTopicWithToken', 'KiiObject', 'KiiServerCodeExecResult', 'KiiAnyAuthenticatedUser', 'KiiSCNRenRen', 'KiiACL', 'KiiEncryptedBucket', 'KiiThingWithToken', 'KiiSocialConnect', 'KiiThingQuery', 'KiiSCNGoogle', 'KiiSocialConnectNetwork', 'KiiErrorParser', 'KiiAnonymousUser', 'KiiBucketWithToken', 'KiiClause', 'KiiObjectWithToken', 'KiiSCNTwitter', 'KiiGeoPoint', 'KiiQuery', 'KiiPushInstallationWithToken', 'KiiPushSubscriptionWithToken', 'KiiThingContext', 'KiiServerCodeEntry', 'KiiSCNFacebook', 'KiiAnalytics', 'KiiThingQueryResult', 'KiiUserWithToken', 'KiiUser', 'KiiUserBuilder', 'KiiACLEntry', 'ForTest', 'KiiSocialNetworkName', 'KiiSite', 'KiiServerCodeEnvironmentVersion', '_KiiHttpRequestType', 'InvalidDisplayNameException', 'InvalidPasswordException', 'InvalidUsernameException', 'InvalidUserIdentifierException', 'InvalidEmailException', 'InvalidPhoneNumberException', 'InvalidLocalPhoneNumberException', 'InvalidCountryException', 'InvalidURIException', 'InvalidACLAction', 'InvalidACLSubject', 'InvalidACLGrant', 'InvalidLimitException', 'InvalidArgumentException', 'IllegalStateException', 'ArithmeticException', 'UnsupportedOperationException', 'KiiAnalyticsSite', 'KiiACLAction'],
     create: function() {
       return ctor.call(this);
     }
