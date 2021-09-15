@@ -111,7 +111,7 @@ root.Kii = (function() {
    */
 
   Kii.getSDKVersion = function() {
-    return "2.4.18";
+    return "2.4.19";
   };
 
   Kii.getBaseURL = function() {
@@ -6771,6 +6771,7 @@ root.KiiUser = (function() {
     this.putIdentity = __bind(this.putIdentity, this);
     this._registerUsingCallbacks = __bind(this._registerUsingCallbacks, this);
     this.register = __bind(this.register, this);
+    this._authenticateWithMfa = __bind(this._authenticateWithMfa, this);
     this._authenticateWithToken = __bind(this._authenticateWithToken, this);
     this._authenticate = __bind(this._authenticate, this);
     this.encryptedBucketWithName = __bind(this.encryptedBucketWithName, this);
@@ -6778,6 +6779,8 @@ root.KiiUser = (function() {
     this.get = __bind(this.get, this);
     this.set = __bind(this.set, this);
     this.objectURI = __bind(this.objectURI, this);
+    this._setScope = __bind(this._setScope, this);
+    this.getScope = __bind(this.getScope, this);
     this.getAccessTokenObject = __bind(this.getAccessTokenObject, this);
     this._setExpiresAt = __bind(this._setExpiresAt, this);
     this._setAccessToken = __bind(this._setAccessToken, this);
@@ -7171,6 +7174,14 @@ root.KiiUser = (function() {
     return accessTokenObject;
   };
 
+  KiiUser.prototype.getScope = function() {
+    return this._scope;
+  };
+
+  KiiUser.prototype._setScope = function(_scope) {
+    this._scope = _scope;
+  };
+
 
   /** Get a specifically formatted string referencing the user
   
@@ -7539,6 +7550,7 @@ root.KiiUser = (function() {
           _this._setUUID(data.id);
           _this._clearPassword();
           _this._setAccessToken(data.access_token);
+          _this._setScope(data.scope);
           if (data.expires_in != null) {
             now = new Date;
             currentTime = now.getTime();
@@ -7590,6 +7602,46 @@ root.KiiUser = (function() {
       })(this),
       failure: (function(_this) {
         return function(error, statusCode) {
+          if (callbacks != null) {
+            return callbacks.failure(_this, error);
+          }
+        };
+      })(this)
+    };
+    return request.execute(authCallbacks, false);
+  };
+
+  KiiUser.prototype._authenticateWithMfa = function(data, callbacks) {
+    var authCallbacks, request;
+    root.Kii.logger("Authenticating user " + this);
+    root.Kii.logger(callbacks);
+    request = this._getRequest({
+      path: "/oauth2/token",
+      withApp: true
+    });
+    request.setMethod("POST");
+    request.setData(data);
+    authCallbacks = {
+      success: (function(_this) {
+        return function(data) {
+          var currentTime, now;
+          _this._setUUID(data.id);
+          _this._clearPassword();
+          _this._setAccessToken(data.access_token);
+          if (data.expires_in != null) {
+            now = new Date;
+            currentTime = now.getTime();
+            _this._expiresAt = KiiUtilities._safeCalculateExpiresAtAsDate(data.expires_in, currentTime);
+          }
+          root.Kii.setCurrentUser(_this);
+          if (callbacks != null) {
+            return callbacks.success(root.Kii.getCurrentUser());
+          }
+        };
+      })(this),
+      failure: (function(_this) {
+        return function(error, statusCode) {
+          _this._clearPassword();
           if (callbacks != null) {
             return callbacks.failure(_this, error);
           }
@@ -7794,6 +7846,158 @@ root.KiiUser = (function() {
     }
     user = new root.KiiUser();
     return user._authenticateWithToken(token, callbacks, expiresAt);
+  };
+
+
+  /** Asynchronously authenticates a user with the server using specified totp code.
+  This method is non-blocking.<br><br>
+  
+  @param {String} totpCode A valid totp code
+  @param {Object} [callbacks] An object with callback methods defined
+  @param {Method} callbacks.success The callback method to call on a successful authentication request
+  @param {Method} callbacks.failure The callback method to call on a failed authentication request
+  @param {Date} expiresAt Access token expire time that has received by {@link KiiUser#getAccessTokenObject()}. This param is optional and can be omitted.
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(theAuthenticatedUser). theAuthenticatedUser is KiiUser instance.</li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.target is a KiiUser instance.</li>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+  @example
+  // example to use callbacks directly
+  KiiUser.authenticateWithTotp(totpCode, {
+      success: function(theAuthenticatedUser) {
+          // do something with the authenticated user
+      },
+  
+      failure: function(theUser, anErrorString) {
+          // do something with the error response
+      }
+  }, expiresAt);
+  
+  // example to use Promise
+  KiiUser.authenticateWithTotp(totpCode).then(
+      function(theAuthenticatedUser) {
+          // do something with the authenticated user
+      },
+      function(error) {
+          // do something with the error response
+      }
+  );
+   */
+
+  KiiUser.authenticateWithTotp = function(totpCode, callbacks) {
+    return new Promise(function(resolve, reject) {
+      var authenticateWithTotpCallbacks;
+      authenticateWithTotpCallbacks = {
+        success: function() {
+          if (callbacks != null) {
+            callbacks.success.apply(callbacks, arguments);
+          }
+          return resolve(arguments[0]);
+        },
+        failure: function() {
+          var error;
+          if (callbacks != null) {
+            callbacks.failure.apply(callbacks, arguments);
+          }
+          error = KiiUtilities._Error(arguments[1]);
+          error.target = arguments[0];
+          return reject(error);
+        }
+      };
+      return KiiUser._authenticateWithTotpUsingCallbacks(totpCode, authenticateWithTotpCallbacks);
+    });
+  };
+
+  KiiUser._authenticateWithTotpUsingCallbacks = function(totpCode, callbacks) {
+    var data, user;
+    data = {
+      grant_type: "mfa",
+      totp_code: totpCode
+    };
+    user = new root.KiiUser();
+    return user._authenticateWithMfa(data, callbacks);
+  };
+
+
+  /** Asynchronously authenticates a user with the server using specified recovery code.
+  This method is non-blocking.<br><br>
+  
+  @param {String} recoveryCode A valid recovery code
+  @param {Object} [callbacks] An object with callback methods defined
+  @param {Method} callbacks.success The callback method to call on a successful authentication request
+  @param {Method} callbacks.failure The callback method to call on a failed authentication request
+  @param {Date} expiresAt Access token expire time that has received by {@link KiiUser#getAccessTokenObject()}. This param is optional and can be omitted.
+  @return {Promise} return promise object.
+    <ul>
+      <li>fulfill callback function: function(theAuthenticatedUser). theAuthenticatedUser is KiiUser instance.</li>
+      <li>reject callback function: function(error). error is an Error instance.
+        <ul>
+          <li>error.target is a KiiUser instance.</li>
+          <li>error.message</li>
+        </ul>
+      </li>
+    </ul>
+  @example
+  // example to use callbacks directly
+  KiiUser.authenticateWithRecoveryCode(recoveryCode, {
+      success: function(theAuthenticatedUser) {
+          // do something with the authenticated user
+      },
+  
+      failure: function(theUser, anErrorString) {
+          // do something with the error response
+      }
+  }, expiresAt);
+  
+  // example to use Promise
+  KiiUser.authenticateWithRecoveryCode(recoveryCode).then(
+      function(theAuthenticatedUser) {
+          // do something with the authenticated user
+      },
+      function(error) {
+          // do something with the error response
+      }
+  );
+   */
+
+  KiiUser.authenticateWithRecoveryCode = function(recoveryCode, callbacks) {
+    return new Promise(function(resolve, reject) {
+      var authenticateWithRecoveryCodeCallbacks;
+      authenticateWithRecoveryCodeCallbacks = {
+        success: function() {
+          if (callbacks != null) {
+            callbacks.success.apply(callbacks, arguments);
+          }
+          return resolve(arguments[0]);
+        },
+        failure: function() {
+          var error;
+          if (callbacks != null) {
+            callbacks.failure.apply(callbacks, arguments);
+          }
+          error = KiiUtilities._Error(arguments[1]);
+          error.target = arguments[0];
+          return reject(error);
+        }
+      };
+      return KiiUser._authenticateWithRecoveryCodeUsingCallbacks(recoveryCode, authenticateWithRecoveryCodeCallbacks);
+    });
+  };
+
+  KiiUser._authenticateWithRecoveryCodeUsingCallbacks = function(recoveryCode, callbacks) {
+    var data, user;
+    data = {
+      grant_type: "mfa",
+      recovery_code: recoveryCode
+    };
+    user = new root.KiiUser();
+    return user._authenticateWithMfa(data, callbacks);
   };
 
 
