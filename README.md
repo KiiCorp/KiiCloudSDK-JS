@@ -13,7 +13,7 @@ Execute `npm install kii-cloud-sdk` (`npm install --save kii-cloud-sdk` to save 
 `bower install kii-cloud-sdk`
 
 ## Usage
-For further info, check the [JSDoc](http://docs.kii.com/references/js/storage/latest/) or the [JS SDK reference](http://docs.kii.com/en/guides/javascript/)
+For further info, check the [JSDoc](http://docs.kii.com/references/js/storage-v3/latest/) or the [JS SDK reference](http://docs.kii.com/en/guides/javascript/)
 
 
 ## Notes for SDK Developers
