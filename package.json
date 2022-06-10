@@ -1,6 +1,6 @@
 {
   "name": "kii-cloud-sdk",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "This is the Kii Cloud SDK",
   "author": "Kii Corp",
   "licenses": [
@@ -23,7 +23,8 @@
     "standalone:prod": "webpack --mode=production --output-filename KiiSDK.min.js",
     "doc": "typedoc --excludePrivate --out docs --readme none src/index.ts",
     "test": "jest",
-    "test:ci": "jest --ci --runInBand"
+    "test:ci": "jest --ci --runInBand",
+    "verset": "func() { if [ -z $1 ]; then echo \"usage: npm run verset -- 3.x.y\"; else sed -i '' -E \"s/return \\\"[0-9]+\\.[0-9]+\\.[0-9]+\\\";/return \\\"${1}\\\";/g\" src/kii.ts; sed -i '' -E \"s/\\\"version\\\": \\\"[0-9]+\\.[0-9]+\\.[0-9]+\\\",/\\\"version\\\": \\\"${1}\\\",/g\" package.json; sed -i '' -E \"s/\\\"version\\\" ?: \\\"v[0-9]+\\.[0-9]+\\.[0-9]+\\\"/\\\"version\\\": \\\"v${1}\\\"/g\" sdk-metadata.json; fi; }; func"
   },
   "jest": {
     "moduleFileExtensions": [

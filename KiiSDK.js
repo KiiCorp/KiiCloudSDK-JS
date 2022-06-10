@@ -1989,41 +1989,41 @@ class KiiErrorParser {
  * ```
  */
 KiiErrorParser.parse = (error) => {
-    let errorString = '';
+    let errorString = "";
     if ((typeof error).toLowerCase() == "string") {
         errorString = error;
     }
     else {
         errorString = error.message;
     }
-    if (errorString.indexOf('0 : http') == 0)
+    if (errorString.indexOf("0 : http") == 0)
         // Network Error by KiiRequest
         return {
             status: 0,
             code: null,
-            message: "Network Error"
+            message: "Network Error",
         };
-    else if (errorString.indexOf('429 : http') == 0)
+    else if (errorString.indexOf("429 : http") == 0)
         // Limitation Error by KiiRequest
         return {
             status: 429,
             code: "TOO_MANY_REQUESTS",
-            message: "Number of requests exceeds the limit."
+            message: "Number of requests exceeds the limit.",
         };
     else if (errorString.indexOf("fail to execute server code. statusCode: 0") == 0)
         // Network Error by ServerCodeEntry
         return {
             status: 0,
             code: null,
-            message: "Network Error"
+            message: "Network Error",
         };
     else if (errorString.indexOf("invalid_grant: ") == 0) {
         // authentication error
-        const arr = errorString.split(':', 2);
+        const arr = errorString.split(":", 2);
         return {
             status: 400,
             code: "invalid_grant",
-            message: arr[1].substr(1)
+            message: arr[1].substr(1),
         };
     }
     // fix "invalid_grant" only case.
@@ -2032,7 +2032,7 @@ KiiErrorParser.parse = (error) => {
         return {
             status: 400,
             code: "invalid_grant",
-            message: errorString
+            message: errorString,
         };
     }
     else {
@@ -2045,14 +2045,14 @@ KiiErrorParser.parse = (error) => {
                 return {
                     status: 429,
                     code: "TOO_MANY_REQUESTS",
-                    message: "Number of requests exceeds the limit."
+                    message: "Number of requests exceeds the limit.",
                 };
+            // Network Error by KiiXHRWrapper, KiiUser, KiiObject or ServerCodeEntry
             else
-                // Network Error by KiiXHRWrapper, KiiUser, KiiObject or ServerCodeEntry
                 return {
                     status: 0,
                     code: null,
-                    message: "Network Error"
+                    message: "Network Error",
                 };
         }
         arr = REG_SERVER_ERROR_KII_REQUEST.exec(errorString);
@@ -2068,10 +2068,15 @@ KiiErrorParser.parse = (error) => {
             return {
                 status: status,
                 code: code,
-                message: message
+                message: message,
             };
         }
-        for (let pattern in [REG_SERVER_ERROR_KII_XHR_WRAPPER, REG_SERVER_ERROR_KII_USER_OR_OBJECT, REG_SERVER_ERROR_KII_SERVER_CODE, REG_SERVER_ERROR_KII_SERVER_CODE_VERSION_NOT_FOUND]) {
+        for (let pattern of [
+            REG_SERVER_ERROR_KII_XHR_WRAPPER,
+            REG_SERVER_ERROR_KII_USER_OR_OBJECT,
+            REG_SERVER_ERROR_KII_SERVER_CODE,
+            REG_SERVER_ERROR_KII_SERVER_CODE_VERSION_NOT_FOUND,
+        ]) {
             const regex = new RegExp(pattern);
             const arr = regex.exec(errorString);
             if (arr) {
@@ -2082,7 +2087,7 @@ KiiErrorParser.parse = (error) => {
                 return {
                     status: status,
                     code: code,
-                    message: message
+                    message: message,
                 };
             }
         }
@@ -2090,7 +2095,7 @@ KiiErrorParser.parse = (error) => {
         return {
             status: -1,
             code: null,
-            message: errorString
+            message: errorString,
         };
     }
 };
@@ -2109,66 +2114,97 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "InvalidPasswordException": () => (/* binding */ InvalidPasswordException),
 /* harmony export */   "InvalidUserIdentifierException": () => (/* binding */ InvalidUserIdentifierException),
 /* harmony export */   "InvalidUsernameException": () => (/* binding */ InvalidUsernameException),
-/* harmony export */   "InvalidDisplaynameException": () => (/* binding */ InvalidDisplaynameException),
+/* harmony export */   "InvalidDisplayNameException": () => (/* binding */ InvalidDisplayNameException),
 /* harmony export */   "InvalidPhoneNumberException": () => (/* binding */ InvalidPhoneNumberException),
 /* harmony export */   "InvalidEmailException": () => (/* binding */ InvalidEmailException),
 /* harmony export */   "ArithmeticException": () => (/* binding */ ArithmeticException),
 /* harmony export */   "InvalidArgumentException": () => (/* binding */ InvalidArgumentException),
 /* harmony export */   "IllegalStateException": () => (/* binding */ IllegalStateException),
 /* harmony export */   "InvalidURIException": () => (/* binding */ InvalidURIException),
+/* harmony export */   "InvalidCountryException": () => (/* binding */ InvalidCountryException),
+/* harmony export */   "UnsupportedOperationException": () => (/* binding */ UnsupportedOperationException),
 /* harmony export */   "parseErrorResponse": () => (/* binding */ parseErrorResponse),
 /* harmony export */   "KiiRequestError": () => (/* binding */ KiiRequestError)
 /* harmony export */ });
 class InvalidPasswordException extends Error {
     constructor(message, target) {
         super(message);
+        this.target = target;
     }
 }
 class InvalidUserIdentifierException extends Error {
     constructor(message, target) {
         super(message);
+        this.target = target;
     }
 }
 class InvalidUsernameException extends Error {
     constructor(message = "Unable to set username. Must be between 3 and 64 characters, which can include alphanumeric characters as well as underscores '_' and periods '.'", target) {
         super(message);
+        this.target = target;
     }
 }
-class InvalidDisplaynameException extends Error {
+class InvalidDisplayNameException extends Error {
     constructor(message = "Unable to set displayName. Must be between 1-50 characters.", target) {
         super(message);
+        this.target = target;
     }
 }
 class InvalidPhoneNumberException extends Error {
     constructor(message, target) {
         super(message);
+        this.target = target;
     }
 }
 class InvalidEmailException extends Error {
     constructor(message, target) {
         super(message);
+        this.target = target;
     }
 }
 class ArithmeticException extends Error {
     constructor(message, target) {
-        super(message);
+        super(`ArithmeticException: ${message}`);
+        this.target = target;
     }
 }
 class InvalidArgumentException extends Error {
     constructor(msg, target) {
         super(`InvalidArgument: ${msg}`);
         this.msg = msg;
+        this.target = target;
     }
 }
 class IllegalStateException extends Error {
     constructor(msg, target) {
         super(`IllegalState: ${msg}`);
         this.msg = msg;
+        this.target = target;
     }
 }
 class InvalidURIException extends Error {
     constructor(message = "Unable to set URI. Must be of the form kiicloud://some/path/to/object/or/entity", target) {
         super(message);
+        this.target = target;
+    }
+}
+class InvalidCountryException extends Error {
+    constructor(message = "Unable to set country code. Must be 2 alphabetic characters. Ex: US, JP, CN", target) {
+        super(message);
+        this.target = target;
+    }
+}
+// Those were in v2 but not very necessary since:
+// 1. Used only one specific place, 2. only valid on JS, 3. it can be InvalidArgumentException
+// export class InvalidLocalPhoneNumberException extends Error {}
+// export class InvalidACLAction extends Error {}
+// export class InvalidACLSubject extends Error {}
+// export class InvalidACLGrant extends Error {}
+// export class InvalidLimitException extends Error {}
+class UnsupportedOperationException extends Error {
+    constructor(message = "Unable to set URI. Must be of the form kiicloud://some/path/to/object/or/entity", target) {
+        super(`UnsupportedOperationException: ${message}`);
+        this.target = target;
     }
 }
 const parseErrorResponse = (request, response, target, extraFields) => {
@@ -3212,7 +3248,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "InvalidPasswordException": () => (/* reexport safe */ _exception__WEBPACK_IMPORTED_MODULE_20__.InvalidPasswordException),
 /* harmony export */   "InvalidUserIdentifierException": () => (/* reexport safe */ _exception__WEBPACK_IMPORTED_MODULE_20__.InvalidUserIdentifierException),
 /* harmony export */   "InvalidUsernameException": () => (/* reexport safe */ _exception__WEBPACK_IMPORTED_MODULE_20__.InvalidUsernameException),
-/* harmony export */   "InvalidDisplaynameException": () => (/* reexport safe */ _exception__WEBPACK_IMPORTED_MODULE_20__.InvalidDisplaynameException),
+/* harmony export */   "InvalidDisplayNameException": () => (/* reexport safe */ _exception__WEBPACK_IMPORTED_MODULE_20__.InvalidDisplayNameException),
 /* harmony export */   "InvalidEmailException": () => (/* reexport safe */ _exception__WEBPACK_IMPORTED_MODULE_20__.InvalidEmailException),
 /* harmony export */   "InvalidPhoneNumberException": () => (/* reexport safe */ _exception__WEBPACK_IMPORTED_MODULE_20__.InvalidPhoneNumberException),
 /* harmony export */   "InvalidURIException": () => (/* reexport safe */ _exception__WEBPACK_IMPORTED_MODULE_20__.InvalidURIException),
@@ -3332,7 +3368,7 @@ class Kii {
      * @returns current version number of the SDK
      */
     static getSDKVersion() {
-        return "3.0.0";
+        return "3.0.2";
     }
     /**
      * @hidden internal only, called when a user is authenticated
@@ -3998,6 +4034,9 @@ class KiiObject {
      * @param point KiiGeoPoint to be tied to the specified key.
      */
     setGeoPoint(key, point) {
+        if (key === null || key === "") {
+            throw new _exception__WEBPACK_IMPORTED_MODULE_3__.InvalidArgumentException("Specified key is invalid", this);
+        }
         if (point instanceof ___WEBPACK_IMPORTED_MODULE_0__.KiiGeoPoint) {
             this.patch[key] = point.toObject();
         }
@@ -5453,11 +5492,6 @@ class KiiClause {
             dict.field = key;
             dict.value = value;
         }
-        else if (operator === "not") {
-            dict.type = "eq";
-            dict.field = key;
-            dict.value = value;
-        }
         else if (operator === "<") {
             dict.type = "range";
             dict.field = key;
@@ -5551,7 +5585,7 @@ class KiiClause {
         if (value.className) {
             value = value.ObjectURI;
         }
-        return KiiClause.create("not", key, value);
+        return this.createWithWhere("not", [KiiClause.equals(key, value)]);
     }
     /**
      * Create an expression of the form (key > value)
@@ -8561,7 +8595,7 @@ class KiiUser {
      */
     setDisplayName(value) {
         if (!(0,_utilities__WEBPACK_IMPORTED_MODULE_9__.validateDisplayName)(value)) {
-            throw new _exception__WEBPACK_IMPORTED_MODULE_3__.InvalidDisplaynameException(undefined, this);
+            throw new _exception__WEBPACK_IMPORTED_MODULE_3__.InvalidDisplayNameException(undefined, this);
         }
         this.displayName = value;
     }
@@ -8642,6 +8676,9 @@ class KiiUser {
      * @param value The country code to set. Must be 2 alphabetic characters. Ex: US, JP, CN
      */
     setCountry(value) {
+        if (!this.country || !(0,_utilities__WEBPACK_IMPORTED_MODULE_9__.validateCountryCode)(this.country)) {
+            throw new _exception__WEBPACK_IMPORTED_MODULE_3__.InvalidCountryException(undefined, undefined);
+        }
         this.country = value;
     }
     /**
@@ -10564,7 +10601,7 @@ class KiiUser {
      */
     pushInstallation() {
         if (this.app.isAdmin()) {
-            throw (0,_utilities__WEBPACK_IMPORTED_MODULE_9__.error)("UnsupportedOperationException: Push installation is not supported by admin context", this);
+            throw new _exception__WEBPACK_IMPORTED_MODULE_3__.UnsupportedOperationException("UnsupportedOperationException: Push installation is not supported by admin context", this);
         }
         return new _push__WEBPACK_IMPORTED_MODULE_7__.KiiPushInstallation(this, this.app);
     }
@@ -10699,7 +10736,7 @@ class KiiUser {
             this.country = country;
         }
         else {
-            throw new _exception__WEBPACK_IMPORTED_MODULE_3__.InvalidPhoneNumberException("Invalid Coruntry", this);
+            throw new _exception__WEBPACK_IMPORTED_MODULE_3__.InvalidCountryException("Invalid Coruntry", this);
         }
     }
     /** @hidden */
@@ -11044,7 +11081,7 @@ class KiiUserBuilder {
             throw new _exception__WEBPACK_IMPORTED_MODULE_2__.InvalidPhoneNumberException("Invalid local Phone Number", undefined);
         }
         if (!(0,_utilities__WEBPACK_IMPORTED_MODULE_3__.validateCountryCode)(country)) {
-            throw new _exception__WEBPACK_IMPORTED_MODULE_2__.InvalidPhoneNumberException("Invalid Country code", undefined);
+            throw new _exception__WEBPACK_IMPORTED_MODULE_2__.InvalidCountryException(undefined, undefined);
         }
         if (!(0,_utilities__WEBPACK_IMPORTED_MODULE_3__.validatePassword)(password)) {
             throw new _exception__WEBPACK_IMPORTED_MODULE_2__.InvalidPasswordException("Invalid Password", undefined);
@@ -11174,7 +11211,7 @@ class KiiUserBuilder {
             this.country = country;
         }
         else {
-            throw new _exception__WEBPACK_IMPORTED_MODULE_2__.InvalidPhoneNumberException("Invalid Country code", this);
+            throw new _exception__WEBPACK_IMPORTED_MODULE_2__.InvalidCountryException(undefined, this);
         }
         return this;
     }
