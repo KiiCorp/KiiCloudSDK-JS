@@ -3592,7 +3592,7 @@ root.KiiGroup = (function() {
   @return instance of KiiGroup.
   @throws {InvalidArgumentException} when passed groupID is empty or null.
   @example
-  var group = new KiiUser.groupWithID("__GROUP_ID__");
+  var group = new KiiGroup.groupWithID("__GROUP_ID__");
    */
 
   KiiGroup.groupWithID = function(groupID) {
